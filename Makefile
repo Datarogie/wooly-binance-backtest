@@ -1,4 +1,4 @@
-.PHONY: up down load build answers lint format
+.PHONY: up down load lint format
 
 up:
 	docker compose up -d
@@ -8,12 +8,6 @@ down:
 
 load:
 	bash scripts/load_data.sh
-
-build:
-	uv run dbt build
-
-answers:
-	uv run dbt build --select answer_strategy_questions
 
 lint:
 	@if [ -z "$$(find models macros analyses -name '*.sql' 2>/dev/null)" ]; then \

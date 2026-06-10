@@ -6,6 +6,9 @@
 __pycache__/
 *.pyc
 
+# direnv
+.direnv/
+
 # dbt
 target/
 dbt_packages/

@@ -37,16 +37,28 @@ prints the answers.
 
 ### Running the steps individually
 
-The `Makefile` wraps each stage if you want them one at a time:
+The `Makefile` covers the steps that bundle multiple or non-dbt commands:
 
 | command | does |
 | --- | --- |
 | `make up` / `make down` | start / stop Postgres |
 | `make load` | load the dataset |
-| `make build` | run `dbt build` |
-| `make test` | run `dbt test` |
-| `make answers` | build the final answer query |
 | `make lint` / `make format` | sqlfluff lint / fix |
+
+dbt itself you run directly, e.g. `dbt build` or
+`dbt build --select answer_strategy_questions`.
+
+### Developing
+
+Set up the Python environment once:
+
+```bash
+uv sync                      # create .venv with dbt + sqlfluff
+source .venv/bin/activate    # so dbt / sqlfluff run without the `uv run` prefix
+```
+
+A committed `.envrc` does this activation automatically on `cd` if you use
+[direnv](https://direnv.net) (`direnv allow` once after cloning).
 
 ## Stack
 
