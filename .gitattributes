@@ -1,0 +1,5 @@
+# Normalize line endings so the scripts and SQL behave identically on macOS and
+# Windows/WSL2. Shell and SQL are forced to LF regardless of host.
+* text=auto eol=lf
+*.sh text eol=lf
+*.sql text eol=lf

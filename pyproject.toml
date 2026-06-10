@@ -1,0 +1,14 @@
+[project]
+name = "alpaca-takehome"
+version = "0.1.0"
+description = "Bitcoin hourly trading strategy backtester, built as a dbt project on Postgres."
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "dbt-postgres==1.10.0",
+    "sqlfluff>=3.2,<4",
+    "sqlfluff-templater-dbt>=3.2,<4",
+]
+
+[tool.uv]
+# dbt project, not an installable Python package: resolve dependencies only.
+package = false
