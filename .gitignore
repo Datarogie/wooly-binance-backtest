@@ -1,2 +1,17 @@
 .env
 .DS_Store
+
+# Python / uv
+.venv/
+__pycache__/
+*.pyc
+
+# dbt
+target/
+dbt_packages/
+logs/
+
+# Dataset (never committed; assume present in project root at run time)
+*.csv
+btcusdt*.csv
+binance*.csv
