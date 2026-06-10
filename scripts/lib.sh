@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
-# Shared shell helpers, sourced by run.sh and the scripts/ entrypoints.
-# Portable across macOS and Linux/WSL2: no GNU-only flags, no `readlink -f`
-# (absent on stock macOS).
+# Shared helpers sourced by run.sh and the scripts in this directory.
 
-# Resolve the absolute directory of a script, following symlinks, without
-# `readlink -f`. Pass the caller's "${BASH_SOURCE[0]}" (or "$0").
+# Absolute directory of a script, resolving symlinks (portable: avoids readlink -f).
 script_dir() {
     src="$1"
     while [ -h "$src" ]; do
@@ -18,9 +15,7 @@ script_dir() {
     cd -P "$(dirname "$src")" >/dev/null 2>&1 && pwd
 }
 
-# Echo the path to the single dataset CSV in the given directory (project root),
-# or fail with a clear message. The dataset is never committed; the assignment
-# assumes it is present in the project root at run time.
+# Path to the dataset CSV in the project root, or fail with a clear message.
 find_dataset() {
     root="$1"
     for candidate in "$root"/*.csv; do
@@ -33,9 +28,7 @@ find_dataset() {
     return 1
 }
 
-# Block until the Postgres container answers, or fail after a bounded number of
-# attempts. Used by run.sh after `docker compose up`. Relies on the compose
-# service being named 'db'.
+# Wait for the Postgres container to accept connections, then give up after a bound.
 wait_for_postgres() {
     retries="${1:-30}"
     user="${POSTGRES_USER:-postgres}"

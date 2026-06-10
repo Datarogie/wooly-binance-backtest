@@ -1,13 +1,9 @@
-# sqlfluff config following the dbt Labs conventions: postgres dialect, dbt
-# templater, lowercase everything, leading commas off (trailing), explicit
-# aliasing. We adopt the standard rather than hand-rolling rules.
+# sqlfluff config following dbt Labs conventions.
 
 [sqlfluff]
 templater = dbt
 dialect = postgres
 max_line_length = 120
-# Exclude rules that fight the dbt Labs style guide.
-exclude_rules = RF02, ST06, AM04
 
 [sqlfluff:indentation]
 indent_unit = space

@@ -4,15 +4,11 @@ version = "0.1.0"
 description = "Bitcoin hourly trading strategy backtester, built as a dbt project on Postgres."
 requires-python = ">=3.10,<3.13"
 dependencies = [
-    # Pinned to dbt Core 1.x via the postgres adapter. Deliberately NOT Fusion /
-    # Core 2.0: the postgres adapter is not supported there yet. See planner s7.
     "dbt-postgres==1.10.0",
-    # Lint with the dbt templater so Jinja-templated models lint as real SQL.
     "sqlfluff>=3.2,<4",
     "sqlfluff-templater-dbt>=3.2,<4",
 ]
 
 [tool.uv]
-# This repo is a dbt project, not an installable Python package; only resolve
-# and install the dependencies above.
+# dbt project, not an installable Python package: resolve dependencies only.
 package = false
