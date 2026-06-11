@@ -1,0 +1,25 @@
+version: 2
+
+unit_tests:
+  - name: hourly_bars_resamples_ohlcv
+    description: >
+      Over a single hour of second bars, open must be the earliest bar's open,
+      close the latest bar's close, high the max, low the min, and volume the
+      sum. The fixture deliberately puts the max high and min low on neither the
+      first nor last second, and feeds the rows out of time order, so a naive
+      first()/last() or an order-blind aggregate would fail. observed_seconds and
+      trade_count are checked alongside.
+    model: fct_bitcoin_hourly_bars
+    given:
+      - input: ref('stg_binance__bitcoin_prices')
+        rows:
+          # Latest second of the hour: supplies the close (250).
+          - {event_at: "2021-05-01 10:00:03", trade_date: "2021-05-01", hour_of_day: 10, open: 240, high: 255, low: 235, close: 250, volume: 4, number_of_trades: 2}
+          # Earliest second of the hour: supplies the open (100).
+          - {event_at: "2021-05-01 10:00:00", trade_date: "2021-05-01", hour_of_day: 10, open: 100, high: 150, low: 90, close: 120, volume: 1, number_of_trades: 3}
+          # Mid-hour: carries the highest high (300) and lowest low (80).
+          - {event_at: "2021-05-01 10:00:01", trade_date: "2021-05-01", hour_of_day: 10, open: 120, high: 300, low: 80, close: 130, volume: 2, number_of_trades: 5}
+          - {event_at: "2021-05-01 10:00:02", trade_date: "2021-05-01", hour_of_day: 10, open: 130, high: 200, low: 110, close: 240, volume: 3, number_of_trades: 1}
+    expect:
+      rows:
+        - {trade_date: "2021-05-01", hour_of_day: 10, hour_start_at: "2021-05-01 10:00:00", bar_open: 100, bar_high: 300, bar_low: 80, bar_close: 250, volume: 10, first_observed_second_at: "2021-05-01 10:00:00", last_observed_second_at: "2021-05-01 10:00:03", observed_seconds: 4, trade_count: 11}
