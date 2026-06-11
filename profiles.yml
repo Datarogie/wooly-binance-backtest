@@ -14,3 +14,4 @@ alpaca_takehome:
       password: "{{ env_var('POSTGRES_PASSWORD', 'postgres') }}"
       schema: "{{ env_var('DBT_SCHEMA', 'public') }}"
       threads: 4
+      sslmode: disable
