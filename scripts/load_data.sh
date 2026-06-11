@@ -34,9 +34,7 @@ echo "header ok; Open Time looks like a datetime ($first_open_time)"
 
 wait_for_postgres
 
-# Schemas and raw landing table (rough by design; real ingestion would own this),
-# then load fresh. dbt creates the model schemas itself, but they are listed here
-# so the load works against an empty database with no other setup.
+# dbt also creates model schemas, but listing them here lets the load run against a fresh db
 docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "$user" -d "$db" -q <<'SQL'
 create schema if not exists raw;
 create schema if not exists staging;

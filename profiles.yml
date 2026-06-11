@@ -1,0 +1,14 @@
+# env vars with local-dev defaults matching docker-compose.yml; no secrets committed
+alpaca_takehome:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
+      port: "{{ env_var('POSTGRES_PORT', '5432') | int }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'bitcoin') }}"
+      user: "{{ env_var('POSTGRES_USER', 'postgres') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD', 'postgres') }}"
+      schema: "{{ env_var('DBT_SCHEMA', 'public') }}"
+      threads: 4
+      sslmode: disable

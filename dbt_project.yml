@@ -1,0 +1,35 @@
+name: alpaca_takehome
+version: 1.0.0
+config-version: 2
+
+profile: alpaca_takehome
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# frictionless by default; override with --vars '{fee_basis_points: 10}'
+vars:
+  fee_basis_points: 0
+  # hours below this threshold are flagged WARN (not failed) as thin coverage
+  hourly_coverage_floor_seconds: 1800
+
+models:
+  alpaca_takehome:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: ephemeral
+      +schema: intermediate
+    marts:
+      +materialized: table
+      +schema: marts

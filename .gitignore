@@ -18,3 +18,6 @@ logs/
 *.csv
 btcusdt*.csv
 binance*.csv
+
+# dbt anonymous usage id
+.user.yml
