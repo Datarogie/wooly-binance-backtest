@@ -124,30 +124,33 @@ centerpiece is a detail-preserving general market-data layer; the strategy is a
 thin specialization on top. Aggregation is a one-way door, so the lossy
 reduction to one number per hour happens only at the final step.
 
-Three layers, no skipping, each in its own schema:
+Each layer reads only from the layer below it, each in its own schema:
 
-- **staging** (views, schema `staging`): `stg_binance__bitcoin_prices` cleans the
-  one-second bars, one row per second. It filters null or non-positive prices,
-  dedupes to one row per second, types prices as `numeric`, and derives
-  `trade_date`, `hour_of_day`, and `day_of_week` once. Lossless: anything needing
-  sub-hour detail reads here.
-- **marts, general** (table, schema `marts`): `fct_bitcoin_hourly_bars` resamples
-  the seconds to hourly open-high-low-close-volume (open = first, high = max,
-  low = min, close = last, volume = sum) with audit columns
-  (`observed_seconds`, `trade_count`, first / last observed second). This is the
-  one heavy collapse and the reusable product any hourly Bitcoin question reads.
-- **intermediate** (ephemeral, schema `intermediate`): the strategy specialization.
-  `int_bitcoin__strategy_daily_trades` turns each hour into one buy/sell with
-  carry-forward; `int_bitcoin__strategy_equity_curve` compounds the reinvested
-  growth factors into a per-hour equity curve.
-- **marts, strategy** (tables, schema `marts`): `fct_strategy_performance_by_hour`
-  and `fct_strategy_drawdown_by_hour`, one wide row per hour of day, join-free for
-  BI. The two questions are answered by ranking these in
+- **staging** (views, schema `staging`): `stg_binance__bitcoin_prices` keeps the
+  one-second bars close to source. It aliases the columns, casts prices to
+  `numeric`, and filters null or non-positive prices, nothing more. Lossless:
+  anything needing sub-hour detail reads here.
+- **intermediate** (schema `intermediate`): `int_bitcoin__hourly_bars` is the one
+  heavy collapse. It dedupes to one row per second, derives `trade_date` and
+  `hour_of_day`, and resamples the seconds to hourly open-high-low-close-volume
+  (open = first, high = max, low = min, close = last, volume = sum) with audit
+  columns (`observed_seconds`, `trade_count`, first / last observed second);
+  materialized as a table so it is computed once. On top of it the strategy
+  specialization stays ephemeral: `int_bitcoin__strategy_daily_trades` turns each
+  hour into one buy/sell with carry-forward, and
+  `int_bitcoin__strategy_equity_curve` compounds the reinvested growth factors
+  into a per-hour equity curve.
+- **marts** (schema `marts`): `fct_bitcoin_hourly_bars` is a thin view publishing
+  the hourly bars as the reusable general-layer product any hourly Bitcoin
+  question reads. `fct_strategy_performance_by_hour` and
+  `fct_strategy_drawdown_by_hour` are tables, one wide row per hour of day,
+  join-free for BI. The two questions are answered by ranking these in
   `analyses/answer_strategy_questions.sql`.
 
-Materializations follow cost: staging recomputes cheaply as views; the hourly
-collapse is a table; the post-collapse intermediates are tiny and stay ephemeral;
-the per-hour marts are tables. The general layer never knows the strategy exists.
+Materializations follow cost and layering: staging is cheap views; the hourly
+collapse is a table computed once; the post-collapse strategy intermediates stay
+ephemeral; the published hourly view is thin and the per-hour strategy marts are
+tables. The general layer never knows the strategy exists.
 
 ## Buy / sell rationale
 
