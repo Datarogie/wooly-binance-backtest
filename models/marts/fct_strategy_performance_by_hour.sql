@@ -6,8 +6,6 @@ with equity_curve as (
 
 last_day as (
 
-    -- The compounded return is read at the final trade date, never the peak, so
-    -- a hour that ran up and then gave it back is scored where it actually ended.
     select distinct on (hour_of_day)
         hour_of_day,
         cumulative_return as total_compounded_return
