@@ -42,3 +42,9 @@ aliasing = explicit
 
 [sqlfluff:rules:ambiguous.column_references]
 group_by_and_order_by_style = explicit
+
+[sqlfluff:rules:references.keywords]
+# open / high / low / close are the canonical OHLCV column names. They are
+# non-reserved keywords in postgres and reading them as plain identifiers is
+# clearer than quoting every one, so allow them.
+ignore_words = open,high,low,close

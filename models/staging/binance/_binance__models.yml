@@ -1,0 +1,74 @@
+version: 2
+
+models:
+  - name: stg_binance__bitcoin_prices
+    description: >
+      Cleaned one-second BTCUSDT bars, one row per observed second. Filters out
+      null or non-positive prices, dedupes to a single row per second, and
+      derives the calendar fields (trade_date, hour_of_day, day_of_week) once so
+      every downstream model shares the same typing and definitions. Lossless at
+      the second grain: anything needing sub-hour detail reads this model.
+    columns:
+      - name: event_at
+        description: >
+          Start of the one-second interval (UTC), carried straight from the
+          source open_time. The grain of this model and its primary key.
+        data_tests:
+          - unique
+          - not_null
+      - name: open
+        description: First traded price in the second, the bar's open.
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+      - name: high
+        description: Highest traded price in the second.
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+      - name: low
+        description: Lowest traded price in the second.
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+      - name: close
+        description: Last traded price in the second, the bar's close.
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+      - name: volume
+        description: Base-asset (BTC) volume traded in the second.
+        data_tests:
+          - not_null
+      - name: number_of_trades
+        description: >
+          Count of individual executed trades in the second, carried through so
+          the hourly bars can sum it into a trade_count.
+        data_tests:
+          - not_null
+      - name: trade_date
+        description: Calendar date (UTC) of the second, derived from event_at.
+        data_tests:
+          - not_null
+      - name: hour_of_day
+        description: >
+          Hour of day (UTC), 0 to 23, derived from event_at. The slicing key the
+          whole strategy is defined around.
+        data_tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 23
+      - name: day_of_week
+        description: >
+          ISO day of week (UTC), 1 = Monday through 7 = Sunday, derived from
+          event_at. Carried for later day-of-week slicing.
+        data_tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 7
