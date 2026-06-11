@@ -1,8 +1,11 @@
 with daily_trades as (
+
     select * from {{ ref('int_bitcoin__strategy_daily_trades') }}
+
 ),
 
 final as (
+
     select
         trade_date,
         hour_of_day,
@@ -18,8 +21,8 @@ final as (
             order by trade_date
             rows between unbounded preceding and current row
         )), 15) - 1 as cumulative_return
-
     from daily_trades
+
 )
 
 select * from final
