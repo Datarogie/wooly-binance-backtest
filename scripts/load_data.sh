@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Load the project-root CSV into raw.bitcoin_prices via psql \copy from stdin
-# (no host mount, so it works the same on any Docker engine).
+# Load the project-root Binance 1-second CSV into raw.bitcoin_prices.
+# Streams the host file through psql's \copy from stdin via `docker compose
+# exec -T`, so there is no host path mount and it behaves the same on Docker
+# Desktop, Colima, and Rancher.
 set -euo pipefail
 
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,7 +17,8 @@ user="${POSTGRES_USER:-postgres}"
 csv="$(find_dataset "$root")"
 echo "dataset: $csv"
 
-# Probe the header: confirm the layout and that Open Time is a datetime, not an epoch.
+# Header probe: confirm the column layout, and that Open Time is a datetime
+# string rather than a unix epoch, since the staging cast depends on it.
 expected="Open Time,Open,High,Low,Close,Volume,Close Time,Quote Asset Volume,Number of Trades,Taker Buy Base Asset Volume,Taker Buy Quote Asset Volume,Ignore"
 header="$(head -n 1 "$csv")"
 if [ "$header" != "$expected" ]; then
@@ -34,28 +37,11 @@ echo "header ok; Open Time looks like a datetime ($first_open_time)"
 
 wait_for_postgres
 
-# dbt also creates model schemas, but listing them here lets the load run against a fresh db
-docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "$user" -d "$db" -q <<'SQL'
-create schema if not exists raw;
-create schema if not exists staging;
-create schema if not exists intermediate;
-create schema if not exists marts;
-create unlogged table if not exists raw.bitcoin_prices (
-    open_time                     timestamp,
-    open                          numeric,
-    high                          numeric,
-    low                           numeric,
-    close                         numeric,
-    volume                        numeric,
-    close_time                    timestamp,
-    quote_asset_volume            numeric,
-    number_of_trades              integer,
-    taker_buy_base_asset_volume   numeric,
-    taker_buy_quote_asset_volume  numeric,
-    ignore                        numeric
-);
-truncate raw.bitcoin_prices;
-SQL
+# Make sure the schemas and table exist even if the init mount did not run
+# (e.g. a pre-existing volume), then load fresh.
+docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "$user" -d "$db" -q < db/init/001_schemas.sql
+docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "$user" -d "$db" -q \
+    -c "truncate raw.bitcoin_prices;"
 
 echo "loading raw.bitcoin_prices (streaming a 13GB file, this takes a few minutes)..."
 docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "$user" -d "$db" \
