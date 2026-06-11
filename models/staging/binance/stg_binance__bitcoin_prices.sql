@@ -14,7 +14,7 @@ with source as (
 deduped as (
 
     -- raw CSV has exact-duplicate second-bars at ~7 timestamps (export overlap)
-    select distinct * from source
+    select distinct on (open_time) * from source order by open_time
 
 ),
 
