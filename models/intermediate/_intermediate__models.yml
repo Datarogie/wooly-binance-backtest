@@ -8,8 +8,32 @@ models:
       then aggregates each clock hour (open = first by time, high = max, low = min,
       close = last by time, volume = sum) with coverage and trade-count audits.
       Materialized as a table: the one heavy collapse, computed once and read by
-      both the published hourly-bars mart and the strategy models. The column
-      contract is documented on fct_bitcoin_hourly_bars, which is a thin view of it.
+      both the published hourly-bars mart and the strategy models.
+    columns:
+      - name: trade_date
+        description: Calendar date (UTC) of the hour. Part of the grain.
+      - name: hour_of_day
+        description: Hour of day (UTC), 0 to 23. Part of the grain.
+      - name: hour_start_at
+        description: Wall-clock start of the hour (UTC).
+      - name: bar_open
+        description: Open of the hour, the earliest second bar's open.
+      - name: bar_high
+        description: Highest price across the hour's second bars.
+      - name: bar_low
+        description: Lowest price across the hour's second bars.
+      - name: bar_close
+        description: Close of the hour, the latest second bar's close.
+      - name: volume
+        description: Total base-asset (BTC) volume across the hour.
+      - name: first_observed_second_at
+        description: Timestamp of the earliest second bar in the hour.
+      - name: last_observed_second_at
+        description: Timestamp of the latest second bar in the hour.
+      - name: observed_seconds
+        description: Count of the hour's seconds that have a bar (coverage).
+      - name: trade_count
+        description: Total executed trades across the hour.
 
   - name: int_bitcoin__strategy_daily_trades
     description: >

@@ -10,8 +10,8 @@ not author them from scratch. Standing up the app and driving its UI is not
 something this repo automates, so the steps are written out below instead of
 shipped as YAML that was never rendered.
 
-The groundwork is validated: `make lightdash` compiles all four explores with
-`SUCCESS=4 ERRORS=0`, so the dimensions and metrics named below are guaranteed
+The groundwork is validated: `make lightdash` compiles all five explores with
+`SUCCESS=5 ERRORS=0`, so the dimensions and metrics named below are guaranteed
 to be present once the project is deployed.
 
 ## Prerequisites
