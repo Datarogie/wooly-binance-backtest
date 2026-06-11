@@ -1,4 +1,7 @@
-# env vars with local-dev defaults matching docker-compose.yml; no secrets committed
+# Project-local profile. dbt is told to look here via `--profiles-dir .` or
+# DBT_PROFILES_DIR; sqlfluff already points at it (profiles_dir=.). Connection
+# values come from the environment with local-dev defaults that match
+# docker-compose.yml and .env.example, so there are no real secrets committed.
 alpaca_takehome:
   target: dev
   outputs:
@@ -11,4 +14,3 @@ alpaca_takehome:
       password: "{{ env_var('POSTGRES_PASSWORD', 'postgres') }}"
       schema: "{{ env_var('DBT_SCHEMA', 'public') }}"
       threads: 4
-      sslmode: disable
