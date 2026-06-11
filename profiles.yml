@@ -1,0 +1,16 @@
+# Project-local profile. dbt is told to look here via `--profiles-dir .` or
+# DBT_PROFILES_DIR; sqlfluff already points at it (profiles_dir=.). Connection
+# values come from the environment with local-dev defaults that match
+# docker-compose.yml and .env.example, so there are no real secrets committed.
+alpaca_takehome:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
+      port: "{{ env_var('POSTGRES_PORT', '5432') | int }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'bitcoin') }}"
+      user: "{{ env_var('POSTGRES_USER', 'postgres') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD', 'postgres') }}"
+      schema: "{{ env_var('DBT_SCHEMA', 'public') }}"
+      threads: 4

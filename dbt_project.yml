@@ -1,0 +1,38 @@
+name: alpaca_takehome
+version: 1.0.0
+config-version: 2
+
+profile: alpaca_takehome
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Round-trip fee applied as a haircut on each day's growth factor. Zero by
+# default so the headline backtest is frictionless; override with
+# `--vars '{fee_basis_points: 10}'` to stress the strategy against costs.
+vars:
+  fee_basis_points: 0
+  # Documented coverage floor: hours with fewer observed seconds than this are
+  # flagged (WARN) as thin, not failed. Half an hour of data is the trust line.
+  hourly_coverage_floor_seconds: 1800
+
+models:
+  alpaca_takehome:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: ephemeral
+      +schema: intermediate
+    marts:
+      +materialized: table
+      +schema: marts
