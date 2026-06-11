@@ -34,10 +34,30 @@ echo "header ok; Open Time looks like a datetime ($first_open_time)"
 
 wait_for_postgres
 
-# Ensure schemas and table exist (in case the init mount did not run), then load fresh.
-docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "$user" -d "$db" -q < db/init/001_schemas.sql
-docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "$user" -d "$db" -q \
-    -c "truncate raw.bitcoin_prices;"
+# Schemas and raw landing table (rough by design; real ingestion would own this),
+# then load fresh. dbt creates the model schemas itself, but they are listed here
+# so the load works against an empty database with no other setup.
+docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "$user" -d "$db" -q <<'SQL'
+create schema if not exists raw;
+create schema if not exists staging;
+create schema if not exists intermediate;
+create schema if not exists marts;
+create unlogged table if not exists raw.bitcoin_prices (
+    open_time                     timestamp,
+    open                          numeric,
+    high                          numeric,
+    low                           numeric,
+    close                         numeric,
+    volume                        numeric,
+    close_time                    timestamp,
+    quote_asset_volume            numeric,
+    number_of_trades              integer,
+    taker_buy_base_asset_volume   numeric,
+    taker_buy_quote_asset_volume  numeric,
+    ignore                        numeric
+);
+truncate raw.bitcoin_prices;
+SQL
 
 echo "loading raw.bitcoin_prices (streaming a 13GB file, this takes a few minutes)..."
 docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "$user" -d "$db" \
