@@ -8,8 +8,7 @@ models:
       volume = sum). The reusable general-layer product: any hourly Bitcoin
       question reads this instead of touching raw data. Audit columns expose how
       well each hour is covered so a thin bar can be judged before it is trusted.
-      The one heavy collapse in the project (110M seconds to days x 24 hours);
-      materialized as a table because everything downstream is tiny.
+      A thin view of int_bitcoin__hourly_bars, the materialized resample.
     data_tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns:
@@ -107,6 +106,13 @@ models:
     columns:
       - name: hour_of_day
         description: Hour of day (UTC), 0 to 23. The primary key.
+        # Lightdash dimension: the x-axis for every per-hour chart. The mart is
+        # already one row per hour, so each metric below is a passthrough max.
+        config:
+          meta:
+            dimension:
+              type: number
+              label: Hour of day (UTC)
         data_tests:
           - unique
           - not_null
@@ -117,32 +123,78 @@ models:
         description: >
           Compounded return at the final trade date: the reinvested equity
           curve's last value minus one. Never the peak ever reached.
+        config:
+          meta:
+            metrics:
+              total_compounded_return_metric:
+                label: Total compounded return
+                type: max
+                description: >
+                  Compounded return at the final trade date for the hour. The Q1
+                  headline; chart this by hour_of_day and the peak bar is the
+                  best hour to trade.
+                format: '#,##0.0%'
         data_tests:
           - not_null
       - name: trading_days
         description: Number of dates this hour traded. A comparability column.
+        config:
+          meta:
+            metrics:
+              trading_days_metric:
+                label: Trading days
+                type: max
+                description: Number of dates this hour traded.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
               expression: "> 0"
       - name: average_daily_return
         description: Mean of the hour's daily returns across all trading days.
+        config:
+          meta:
+            metrics:
+              average_daily_return_metric:
+                label: Average daily return
+                type: max
+                description: Mean of the hour's daily returns across all trading days.
+                format: '#,##0.00%'
         data_tests:
           - not_null
       - name: daily_return_standard_deviation
         description: >
           Sample standard deviation of the hour's daily returns, a dispersion
           measure for judging how steady the compounded return was.
+        config:
+          meta:
+            metrics:
+              daily_return_standard_deviation_metric:
+                label: Daily return standard deviation
+                type: max
+                description: >
+                  Sample standard deviation of the hour's daily returns, a
+                  dispersion measure for the compounded return.
+                format: '#,##0.00%'
         data_tests:
           - not_null
       - name: first_trade_date
         description: Earliest date this hour traded. A comparability column.
+        config:
+          meta:
+            dimension:
+              type: date
+              label: First trade date
         data_tests:
           - not_null
       - name: last_trade_date
         description: >
           Latest date this hour traded, where the compounded return is read. A
           comparability column.
+        config:
+          meta:
+            dimension:
+              type: date
+              label: Last trade date
         data_tests:
           - not_null
 
@@ -155,6 +207,12 @@ models:
     columns:
       - name: hour_of_day
         description: Hour of day (UTC), 0 to 23. The primary key.
+        # Lightdash dimension: the x-axis for the drawdown-by-hour chart.
+        config:
+          meta:
+            dimension:
+              type: number
+              label: Hour of day (UTC)
         data_tests:
           - unique
           - not_null
@@ -165,6 +223,17 @@ models:
         description: >
           Deepest peak-to-trough drop on the reinvested equity curve, measured
           against the running peak. Zero or negative (a drop is negative).
+        config:
+          meta:
+            metrics:
+              maximum_drawdown_metric:
+                label: Maximum drawdown
+                type: max
+                description: >
+                  Deepest peak-to-trough drop on the reinvested equity curve.
+                  Negative; the hour with the value closest to zero is the Q2
+                  answer (lowest maximum loss).
+                format: '#,##0.0%'
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
@@ -173,24 +242,58 @@ models:
         description: >
           Worst loss below the starting unit of capital, floored at zero so an
           hour that was never underwater reads as no loss.
+        config:
+          meta:
+            metrics:
+              maximum_loss_from_start_metric:
+                label: Maximum loss from start
+                type: max
+                description: >
+                  Worst loss below the starting unit of capital, floored at zero.
+                format: '#,##0.0%'
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
               expression: ">= 0"
       - name: worst_single_day_return
         description: The most negative single-day return this hour ever posted.
+        config:
+          meta:
+            metrics:
+              worst_single_day_return_metric:
+                label: Worst single day return
+                type: max
+                description: The most negative single-day return this hour ever posted.
+                format: '#,##0.00%'
         data_tests:
           - not_null
       - name: first_trade_date
         description: Earliest date this hour traded. A comparability column.
+        config:
+          meta:
+            dimension:
+              type: date
+              label: First trade date
         data_tests:
           - not_null
       - name: last_trade_date
         description: Latest date this hour traded. A comparability column.
+        config:
+          meta:
+            dimension:
+              type: date
+              label: Last trade date
         data_tests:
           - not_null
       - name: trading_days
         description: Number of dates this hour traded. A comparability column.
+        config:
+          meta:
+            metrics:
+              drawdown_trading_days_metric:
+                label: Trading days
+                type: max
+                description: Number of dates this hour traded.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:

@@ -56,6 +56,7 @@ The `Makefile` wraps each stage so any one can be run in isolation:
 | `make answers` | print the answer to each question from the built marts |
 | `make all` | the whole pipeline: up, load, build, answers |
 | `make lint` / `make format` | sqlfluff lint / fix |
+| `make lightdash` | validate the Lightdash metadata offline (see below) |
 
 The `Makefile` exports `DBT_PROFILES_DIR`, so dbt finds the project-local
 `profiles.yml`. To run dbt directly, either `export DBT_PROFILES_DIR=$(pwd)`
@@ -73,6 +74,41 @@ source .venv/bin/activate    # so dbt / sqlfluff run without the `uv run` prefix
 
 A committed `.envrc` does this activation automatically on `cd` if you use
 [direnv](https://direnv.net) (`direnv allow` once after cloning).
+
+## Explore in Lightdash
+
+The two per-hour strategy marts are annotated for [Lightdash](https://www.lightdash.com)
+so they are explorable with no extra modeling. The metadata lives in
+`models/marts/_marts__models.yml` under each column's `config.meta`:
+`hour_of_day` and the trade-date columns are dimensions, and the headline
+measures (`total_compounded_return`, `maximum_drawdown`, `maximum_loss_from_start`,
+`worst_single_day_return`, `average_daily_return`, and the comparability columns)
+are metrics. Because each mart is already one row per hour, the metrics use
+`type: max`, a passthrough that returns the hour's single value when grouped by
+`hour_of_day`. Charting `total_compounded_return` by `hour_of_day` surfaces Q1
+(hour 22 is the tallest bar); charting `maximum_drawdown` by `hour_of_day`
+surfaces Q2 (hour 10 is closest to zero).
+
+Lightdash reads the warehouse connection straight from this project's
+`profiles.yml`, which is already env-var driven, so there is no separate
+connection file to keep in sync.
+
+To validate the metadata offline, with no Lightdash instance:
+
+```bash
+npm install -g @lightdash/cli   # one-time
+make lightdash                  # compiles the four explores from the dbt manifest
+```
+
+`make lightdash` runs `lightdash compile --skip-warehouse-catalog` (it uses the
+YAML column types, so it needs no warehouse round-trip) and should report
+`SUCCESS=4 ERRORS=0`. To build the charts live, point the Lightdash app at this
+dbt project (`lightdash deploy` or a `start-preview`) and explore the two marts.
+
+When running the Lightdash CLI against a live warehouse (`generate`, `deploy`),
+activate the venv first (`source .venv/bin/activate`) so its bare `dbt` call
+resolves, and note `profiles.yml` sets `sslmode: disable` so it connects to the
+local Postgres, which does not speak SSL.
 
 ## Stack
 
@@ -157,7 +193,7 @@ Documented but intentionally not built, to keep the scope honest:
   via a `dim_date` (the daily grain is already preserved upstream for this).
 - Risk-adjusted ranking (e.g. a deflated Sharpe to correct for testing 24 hours
   at once), built with a quant partner.
-- The optional `dim_trading_hour` session-label seed and a Lightdash connection
-  for charting the per-hour marts.
+- The optional `dim_trading_hour` session-label seed for human-readable hour
+  labels in the Lightdash dimension.
 - dbt Fusion once its Postgres adapter ships; the project is already
   Fusion-shaped (standard YAML, unit tests, materializations).
