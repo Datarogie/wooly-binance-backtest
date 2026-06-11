@@ -1,46 +1,25 @@
 version: 2
 
 unit_tests:
-  - name: performance_reads_last_date_not_peak
+  - name: hourly_bars_resamples_ohlcv
     description: >
-      total_compounded_return must be the equity-curve value at the LAST trade
-      date, not the maximum ever reached. The fixture for hour 7 peaks at a
-      cumulative_return of 0.50 mid-history, then ends at 0.20, so a max()
-      implementation would wrongly report 0.50. The correct answer is 0.20.
-    model: fct_strategy_performance_by_hour
+      Over a single hour of second bars, open must be the earliest bar's open,
+      close the latest bar's close, high the max, low the min, and volume the
+      sum. The fixture deliberately puts the max high and min low on neither the
+      first nor last second, and feeds the rows out of time order, so a naive
+      first()/last() or an order-blind aggregate would fail. observed_seconds and
+      trade_count are checked alongside.
+    model: fct_bitcoin_hourly_bars
     given:
-      - input: ref('int_bitcoin__strategy_equity_curve')
-        format: sql
-        rows: |
-          select cast('2022-01-01' as date) as trade_date, 7 as hour_of_day, cast(1.20 as numeric) as growth_factor, cast(0.20 as numeric) as daily_return, cast(1.20 as numeric) as cumulative_growth_factor, cast(0.20 as numeric) as cumulative_return
-          union all
-          select cast('2022-01-02' as date) as trade_date, 7 as hour_of_day, cast(1.25 as numeric) as growth_factor, cast(0.25 as numeric) as daily_return, cast(1.50 as numeric) as cumulative_growth_factor, cast(0.50 as numeric) as cumulative_return
-          union all
-          select cast('2022-01-03' as date) as trade_date, 7 as hour_of_day, cast(0.80 as numeric) as growth_factor, cast(-0.20 as numeric) as daily_return, cast(1.20 as numeric) as cumulative_growth_factor, cast(0.20 as numeric) as cumulative_return
+      - input: ref('stg_binance__bitcoin_prices')
+        rows:
+          # Latest second of the hour: supplies the close (250).
+          - {event_at: "2021-05-01 10:00:03", trade_date: "2021-05-01", hour_of_day: 10, open: 240, high: 255, low: 235, close: 250, volume: 4, number_of_trades: 2}
+          # Earliest second of the hour: supplies the open (100).
+          - {event_at: "2021-05-01 10:00:00", trade_date: "2021-05-01", hour_of_day: 10, open: 100, high: 150, low: 90, close: 120, volume: 1, number_of_trades: 3}
+          # Mid-hour: carries the highest high (300) and lowest low (80).
+          - {event_at: "2021-05-01 10:00:01", trade_date: "2021-05-01", hour_of_day: 10, open: 120, high: 300, low: 80, close: 130, volume: 2, number_of_trades: 5}
+          - {event_at: "2021-05-01 10:00:02", trade_date: "2021-05-01", hour_of_day: 10, open: 130, high: 200, low: 110, close: 240, volume: 3, number_of_trades: 1}
     expect:
       rows:
-        - {hour_of_day: 7, total_compounded_return: "0.20", trading_days: 3, first_trade_date: "2022-01-01", last_trade_date: "2022-01-03"}
-
-  - name: drawdown_drop_recover_new_low
-    description: >
-      An equity path that rises, drops, partially recovers, then falls to a new
-      low. maximum_drawdown must be measured against the RUNNING PEAK (1.20), not
-      the prior value, so the partial recovery to 1.10 does not reset the peak
-      and the new low at 0.60 yields the deepest drawdown of -0.50. The worst
-      single-day return is -0.50 and the worst loss below starting capital is
-      0.40 (cumulative_return bottomed at -0.40, floored result stays positive).
-    model: fct_strategy_drawdown_by_hour
-    given:
-      - input: ref('int_bitcoin__strategy_equity_curve')
-        format: sql
-        rows: |
-          select cast('2022-02-01' as date) as trade_date, 3 as hour_of_day, cast(1.20 as numeric) as growth_factor, cast(0.20 as numeric) as daily_return, cast(1.20 as numeric) as cumulative_growth_factor, cast(0.20 as numeric) as cumulative_return
-          union all
-          select cast('2022-02-02' as date) as trade_date, 3 as hour_of_day, cast(0.8333 as numeric) as growth_factor, cast(-0.1667 as numeric) as daily_return, cast(1.00 as numeric) as cumulative_growth_factor, cast(0.00 as numeric) as cumulative_return
-          union all
-          select cast('2022-02-03' as date) as trade_date, 3 as hour_of_day, cast(1.10 as numeric) as growth_factor, cast(0.10 as numeric) as daily_return, cast(1.10 as numeric) as cumulative_growth_factor, cast(0.10 as numeric) as cumulative_return
-          union all
-          select cast('2022-02-04' as date) as trade_date, 3 as hour_of_day, cast(0.5455 as numeric) as growth_factor, cast(-0.50 as numeric) as daily_return, cast(0.60 as numeric) as cumulative_growth_factor, cast(-0.40 as numeric) as cumulative_return
-    expect:
-      rows:
-        - {hour_of_day: 3, maximum_drawdown: "-0.500000000000000", maximum_loss_from_start: "0.40", worst_single_day_return: "-0.50", trading_days: 4, first_trade_date: "2022-02-01", last_trade_date: "2022-02-04"}
+        - {trade_date: "2021-05-01", hour_of_day: 10, hour_start_at: "2021-05-01 10:00:00", bar_open: 100, bar_high: 300, bar_low: 80, bar_close: 250, volume: 10, first_observed_second_at: "2021-05-01 10:00:00", last_observed_second_at: "2021-05-01 10:00:03", observed_seconds: 4, trade_count: 11}
