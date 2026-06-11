@@ -59,6 +59,9 @@ uv run dbt docs generate && uv run dbt docs serve   # browse the lineage and doc
 `bash scripts/print_answers.sh` prints the two answers, and `docker compose up -d
 --wait` / `docker compose down` controls Postgres.
 
+`bash scripts/setup.sh` does the one-time bits (create the venv, install the dbt
+packages, enable direnv if present), though `uv run` and `run.sh` work without it.
+
 Two optional conveniences:
 
 - **Makefile shortcuts** (they set `DBT_PROFILES_DIR` for you): `make build`,

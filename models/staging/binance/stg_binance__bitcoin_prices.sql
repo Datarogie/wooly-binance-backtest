@@ -1,6 +1,13 @@
 with source as (
 
     select * from {{ source('binance', 'bitcoin_prices') }}
+    -- With a real ingestion this would ideally sit upstream. kept here as basic source-cleansing filter.
+    where
+        open_time is not null
+        and open > 0
+        and high > 0
+        and low > 0
+        and close > 0
 
 ),
 
@@ -15,14 +22,6 @@ final as (
         cast(volume as numeric) as volume,
         number_of_trades
     from source
-    -- With a real ingestion this trust gate would sit upstream or in a landing
-    -- model; kept here as the one source-cleansing filter.
-    where
-        open_time is not null
-        and open > 0
-        and high > 0
-        and low > 0
-        and close > 0
 
 )
 
