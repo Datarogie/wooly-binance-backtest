@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  - name: int_bitcoin__hourly_bars
+    description: >
+      Hourly OHLCV bars resampled from the one-second staging bars: dedupes to one
+      row per second (highest-volume survivor), derives trade_date and hour_of_day,
+      then aggregates each clock hour (open = first by time, high = max, low = min,
+      close = last by time, volume = sum) with coverage and trade-count audits.
+      Materialized as a table: the one heavy collapse, computed once and read by
+      both the published hourly-bars mart and the strategy models. The column
+      contract is documented on fct_bitcoin_hourly_bars, which is a thin view of it.
