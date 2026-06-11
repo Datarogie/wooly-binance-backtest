@@ -2,8 +2,13 @@ version: 2
 
 models:
   - name: stg_binance__bitcoin_prices
-    description: One-second BTCUSDT bars: columns aliased, prices cast to numeric, nulls and non-positive prices filtered.
+    description: "One-second BTCUSDT bars: columns aliased, prices cast to numeric, nulls and non-positive prices filtered."
     columns:
+      - name: bitcoin_price_id
+        description: Surrogate key derived from event_at.
+        data_tests:
+          - unique
+          - not_null
       - name: event_at
         description: Start of the one-second interval (UTC).
         data_tests:
@@ -13,25 +18,29 @@ models:
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
       - name: high
         description: Highest traded price in the second.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
       - name: low
         description: Lowest traded price in the second.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
       - name: close
         description: Last traded price in the second, the bar's close.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
       - name: volume
         description: Base-asset (BTC) volume traded in the second.
         data_tests:
