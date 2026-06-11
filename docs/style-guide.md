@@ -21,10 +21,32 @@ auto-fix.
 - Every model ends with a `final` CTE that lists all columns explicitly, then
   `select * from final`.
 - All columns are explicitly aliased whenever a join is present.
-- Derived columns are computed once, upstream (in staging), and reused
-  downstream rather than recomputed.
+- Derived columns are computed once, as far upstream as their inputs allow, and
+  reused downstream rather than recomputed.
 - References are always `{{ ref() }}` / `{{ source() }}`; never a hardcoded
   schema or table name.
+
+## Layering
+
+Each layer reads only from the layer below it, never sideways from a peer's
+output or down from a layer above.
+
+- **Sources / landing.** Staging reads from `{{ source() }}`, or from a thin
+  landing model if raw cleansing is unavoidable. Nothing but staging touches raw.
+- **Staging** (`stg_`): one model per source object. Aliasing, casting, and at
+  most light filtering (for example dropping corrupt or deleted rows). No
+  deduping, no grain changes, no derived calendar fields, no business logic, and
+  no unit tests. Kept as close to the source as possible.
+- **Intermediate** (`int_`): reads staging or other intermediate models only,
+  never a mart. Deduping, grain changes, derivations, and business logic live
+  here. If an intermediate needs something from a mart, shift that logic left
+  into an intermediate instead.
+- **Marts** (`fct_` / `dim_`): read staging, intermediate, or other marts. The
+  presentation layer, conformed and join-free for BI.
+- **BI / analytics** (optional): if added, wide self-serve models read from marts
+  only.
+- Final answers live in `analyses/`, an ad-hoc query over the marts, never a core
+  model.
 
 ## Naming
 
@@ -45,15 +67,16 @@ auto-fix.
 - Explanation lives in `schema.yml` `description` fields at the model and column
   level, not in inline SQL comments. Every model and every column has a
   description.
-- The only acceptable inline SQL comment is a genuinely non-obvious line of math
-  or a why-not-what note.
+- Well-written model SQL is self-documenting and should not need inline comments.
+  Put any rationale in the model or column description instead.
 
 ## Testing
 
-- A primary-key test (`unique` + `not_null` on the grain) on every materialized
-  model. Ephemeral models carry their contracts one layer down, on the tables
-  that read them, since generic tests cannot run against a relation that never
-  materializes.
+- A primary-key test (`unique` + `not_null`) on every model that establishes a
+  grain (the marts and the hourly-bars table). Staging does not enforce a grain,
+  so it carries `not_null` checks but no uniqueness. Ephemeral models carry their
+  contracts one layer down, on the tables that read them, since generic tests
+  cannot run against a relation that never materializes.
 - Value-range and relationship tests use `dbt_utils` and `dbt_expectations`.
 - Unit tests are written for every model that holds business logic, before the
   logic is added, asserting output for a fixture input. They cover boundary
