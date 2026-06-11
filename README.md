@@ -42,38 +42,32 @@ Two things, both free and quick to install:
 `run.sh` starts Postgres, loads the data, builds and tests the dbt models, and
 prints the answers.
 
-### Running the steps individually
+### Running it yourself
 
-The `Makefile` wraps each stage so any one can be run in isolation:
-
-| command | does |
-| --- | --- |
-| `make up` / `make down` | start / stop Postgres |
-| `make load` | load the dataset into `raw.bitcoin_prices` |
-| `make deps` | install the dbt packages |
-| `make build` | `dbt deps` then `dbt build` (runs and tests every model) |
-| `make test` | run the dbt tests (generic and unit) |
-| `make answers` | print the answer to each question from the built marts |
-| `make all` | the whole pipeline: up, load, build, answers |
-| `make lint` / `make format` | sqlfluff lint / fix |
-| `make lightdash` | validate the Lightdash metadata offline (see below) |
-
-The `Makefile` exports `DBT_PROFILES_DIR`, so dbt finds the project-local
-`profiles.yml`. To run dbt directly, either `export DBT_PROFILES_DIR=$(pwd)`
-first or pass `--profiles-dir .`, e.g.
-`uv run dbt build --select fct_bitcoin_hourly_bars`.
-
-### Developing
-
-Set up the Python environment once:
+`bash run.sh` is the whole pipeline in one command and needs nothing beyond the
+prerequisites; it manages the dbt environment for you. To run pieces yourself,
+point dbt at the project-local profiles once, then use `uv run` (it installs
+from the lockfile on first use, so there is no separate setup step):
 
 ```bash
-uv sync                      # create .venv with dbt + sqlfluff
-source .venv/bin/activate    # so dbt / sqlfluff run without the `uv run` prefix
+export DBT_PROFILES_DIR="$PWD"   # once per shell
+uv run dbt build                 # build and test every model
+uv run dbt test                  # just the tests
+uv run dbt docs generate && uv run dbt docs serve   # browse the lineage and docs
 ```
 
-A committed `.envrc` does this activation automatically on `cd` if you use
-[direnv](https://direnv.net) (`direnv allow` once after cloning).
+`bash scripts/print_answers.sh` prints the two answers, and `docker compose up -d
+--wait` / `docker compose down` controls Postgres.
+
+Two optional conveniences:
+
+- **Makefile shortcuts** (they set `DBT_PROFILES_DIR` for you): `make build`,
+  `make test`, `make answers`, `make up` / `make down`, `make load`,
+  `make lint` / `make format`, `make lightdash`, and `make all`.
+- **[direnv](https://direnv.net)** to drop the `uv run` prefix entirely: run
+  `uv sync` once to create the venv, then `direnv allow`. The committed `.envrc`
+  activates the venv and sets `DBT_PROFILES_DIR` on `cd`, so bare `dbt build`
+  works.
 
 ## Explore in Lightdash
 

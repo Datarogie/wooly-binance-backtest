@@ -1,7 +1,5 @@
-# Project-local profile. dbt is told to look here via `--profiles-dir .` or
-# DBT_PROFILES_DIR; sqlfluff already points at it (profiles_dir=.). Connection
-# values come from the environment with local-dev defaults that match
-# docker-compose.yml and .env.example, so there are no real secrets committed.
+# Basic profile: env_var driven, with local-dev failover defaults so a fresh
+# clone runs with no .env. Fine for a take-home, not production.
 alpaca_takehome:
   target: dev
   outputs:
