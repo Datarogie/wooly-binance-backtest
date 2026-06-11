@@ -33,3 +33,37 @@ models:
         description: Count of seconds with a bar in the hour, out of 3600 possible.
       - name: trade_count
         description: Total executed trades in the hour, summed from number_of_trades.
+
+  - name: int_bitcoin__strategy_daily_trades
+    description: One simulated trade per day per hour of day, entry at bar_open (or prior close carried forward if the hour opened late), exit at bar_close, growth factor net of fee.
+    columns:
+      - name: trade_date
+        description: Calendar date (UTC) of the trade.
+      - name: hour_of_day
+        description: Hour of day (UTC), 0 to 23.
+      - name: entry_price
+        description: Buy price; bar_open when first_observed_second_at equals hour_start_at, otherwise the prior bar's close carried forward.
+      - name: exit_price
+        description: Sell price; the bar_close of the hour.
+      - name: carried_price_staleness_seconds
+        description: Seconds from the prior bar's last second to this hour's start. Zero when bar_open was used.
+      - name: growth_factor
+        description: exit_price / entry_price after the round-trip fee haircut.
+      - name: daily_return
+        description: growth_factor - 1, the day's fractional return.
+
+  - name: int_bitcoin__strategy_equity_curve
+    description: Running compounded equity curve; per hour of day, the cumulative product of daily growth factors across all trade dates.
+    columns:
+      - name: trade_date
+        description: Calendar date (UTC).
+      - name: hour_of_day
+        description: Hour of day (UTC), 0 to 23.
+      - name: growth_factor
+        description: The day's growth factor, carried through from daily trades.
+      - name: daily_return
+        description: The day's fractional return, carried through from daily trades.
+      - name: cumulative_growth_factor
+        description: Running product of growth factors for this hour of day, up to and including this date.
+      - name: cumulative_return
+        description: cumulative_growth_factor - 1, the compounded return to date.
