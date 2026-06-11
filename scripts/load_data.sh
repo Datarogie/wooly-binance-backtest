@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# Load the project-root Binance 1-second CSV into raw.bitcoin_prices.
-# Streams the host file through psql's \copy from stdin via `docker compose
-# exec -T`, so there is no host path mount and it behaves the same on Docker
-# Desktop, Colima, and Rancher.
+# Load the project-root CSV into raw.bitcoin_prices via psql \copy from stdin
+# (no host mount, so it works the same on any Docker engine).
 set -euo pipefail
 
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,8 +15,7 @@ user="${POSTGRES_USER:-postgres}"
 csv="$(find_dataset "$root")"
 echo "dataset: $csv"
 
-# Header probe: confirm the column layout, and that Open Time is a datetime
-# string rather than a unix epoch, since the staging cast depends on it.
+# Probe the header: confirm the layout and that Open Time is a datetime, not an epoch.
 expected="Open Time,Open,High,Low,Close,Volume,Close Time,Quote Asset Volume,Number of Trades,Taker Buy Base Asset Volume,Taker Buy Quote Asset Volume,Ignore"
 header="$(head -n 1 "$csv")"
 if [ "$header" != "$expected" ]; then
@@ -37,8 +34,7 @@ echo "header ok; Open Time looks like a datetime ($first_open_time)"
 
 wait_for_postgres
 
-# Make sure the schemas and table exist even if the init mount did not run
-# (e.g. a pre-existing volume), then load fresh.
+# Ensure schemas and table exist (in case the init mount did not run), then load fresh.
 docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "$user" -d "$db" -q < db/init/001_schemas.sql
 docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "$user" -d "$db" -q \
     -c "truncate raw.bitcoin_prices;"
