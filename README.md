@@ -102,8 +102,9 @@ make lightdash                  # compiles the four explores from the dbt manife
 
 `make lightdash` runs `lightdash compile --skip-warehouse-catalog` (it uses the
 YAML column types, so it needs no warehouse round-trip) and should report
-`SUCCESS=4 ERRORS=0`. To build the charts live, point the Lightdash app at this
-dbt project (`lightdash deploy` or a `start-preview`) and explore the two marts.
+`SUCCESS=4 ERRORS=0`. To build the two answer charts live, point the Lightdash
+app at this dbt project (`lightdash deploy`); the click-by-click steps are in
+[`docs/lightdash-viz.md`](docs/lightdash-viz.md).
 
 When running the Lightdash CLI against a live warehouse (`generate`, `deploy`),
 activate the venv first (`source .venv/bin/activate`) so its bare `dbt` call
