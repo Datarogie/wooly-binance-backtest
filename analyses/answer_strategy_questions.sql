@@ -1,14 +1,3 @@
--- The two questions, answered. This is an ad-hoc ranking query, not a model:
--- it reads the conformed per-hour marts and reduces each to a single labeled
--- winner. Selection is intentionally lossy and lives here, never in a core
--- model, so the marts stay reusable for any other ranking.
---
--- Q1: which hour of the day had the biggest compounded return.
--- Q2: which hour of the day had the lowest maximum losses. "Maximum losses" is
---     read as the maximum drawdown (deepest peak-to-trough on the reinvested
---     equity curve); the hour whose worst drawdown is shallowest wins. The
---     worst loss below starting capital is carried alongside for context.
-
 with performance as (
 
     select * from {{ ref('fct_strategy_performance_by_hour') }}
