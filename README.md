@@ -11,10 +11,20 @@ compounded returns, and which had the lowest maximum losses.
 > Work in progress: the deeper sections below are placeholders and get filled in
 > as the models land.
 
-## Quick start
+## Prerequisites
 
-You need [uv](https://docs.astral.sh/uv/), a running Docker engine (Docker
-Desktop, Colima, or Rancher Desktop), and the dataset.
+Two things, both free and quick to install:
+
+- **Docker**, to run the database. On macOS or Windows the simplest option is
+  [Docker Desktop](https://docs.docker.com/get-docker/) (one installer); on
+  Linux, [Docker Engine](https://docs.docker.com/engine/install/). The project
+  drives it with `docker compose`, which ships with both.
+- **uv**, for Python and dbt:
+  [install guide](https://docs.astral.sh/uv/getting-started/installation/). It
+  reads the committed lockfile, so dbt and its dependencies are pulled in
+  automatically at pinned versions; no separate dbt or Python setup needed.
+
+## Quick start
 
 1. Put the dataset CSV in the project root (it is never committed). Either use
    the Kaggle CLI:
