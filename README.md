@@ -54,6 +54,10 @@ uv sync                      # create .venv
 source .venv/bin/activate    # or use direnv (committed .envrc)
 ```
 
+`bash scripts/setup.sh` does the one-time setup (venv + dbt packages) and enables
+direnv if it's installed. The committed `.envrc` activates the venv and exports
+`DBT_PROFILES_DIR` on `cd`, so bare `dbt build` works without any prefix.
+
 ## Explore in Lightdash
 
 The two per-hour strategy marts are annotated for [Lightdash](https://www.lightdash.com),
@@ -74,14 +78,16 @@ To validate the metadata offline with no Lightdash instance:
 
 ```bash
 npm install -g @lightdash/cli   # one-time
-make lightdash                  # compiles the four explores from the dbt manifest
+make lightdash                  # compiles the five explores from the dbt manifest
 ```
 
 `make lightdash` runs `lightdash compile --skip-warehouse-catalog` (uses YAML
-column types, no warehouse round-trip) and should report `SUCCESS=4 ERRORS=0`.
-To build charts live, point Lightdash at this dbt project (`lightdash deploy` or
-`start-preview`). When running against a live warehouse, activate the venv first
-(`source .venv/bin/activate`) so the CLI's bare `dbt` call resolves.
+column types, no warehouse round-trip) and should report `SUCCESS=5 ERRORS=0`.
+To build the two answer charts live, point Lightdash at this dbt project
+(`lightdash deploy`); the click-by-click steps are in
+[`docs/lightdash-viz.md`](docs/lightdash-viz.md). When running against a live
+warehouse, activate the venv first (`source .venv/bin/activate`) so the CLI's
+bare `dbt` call resolves.
 
 ## Stack
 
@@ -102,7 +108,8 @@ Three layers, each in its own schema:
   models (`int_bitcoin__strategy_daily_trades`, `int_bitcoin__strategy_equity_curve`)
   simulate trades and compound the returns.
 - **marts** (tables, `marts` schema): `fct_bitcoin_hourly_bars` is a thin view
-  over the hourly bars intermediate; anything needing hourly OHLCV reads from here. `fct_strategy_performance_by_hour` and `fct_strategy_drawdown_by_hour`
+  over the hourly bars intermediate; anything needing hourly OHLCV reads from here.
+  `fct_strategy_performance_by_hour` and `fct_strategy_drawdown_by_hour`
   are 24-row aggregates, one per hour of day, for BI tools or the analysis query.
 
 The answers are produced by `analyses/answer_strategy_questions.sql`, an ad-hoc

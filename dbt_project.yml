@@ -30,9 +30,13 @@ models:
     staging:
       +materialized: view
       +schema: staging
+      +meta:
+        hidden: true
     intermediate:
       +materialized: ephemeral
       +schema: intermediate
+      +meta:
+        hidden: true
     marts:
       +materialized: table
       +schema: marts
