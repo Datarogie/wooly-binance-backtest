@@ -2,28 +2,22 @@ version: 2
 
 models:
   - name: int_bitcoin__hourly_bars
-    description: >
-      Hourly OHLCV bars resampled from the one-second staging bars: dedupes to one
-      row per second (highest-volume survivor), derives trade_date and hour_of_day,
-      then aggregates each clock hour (open = first by time, high = max, low = min,
-      close = last by time, volume = sum) with coverage and trade-count audits.
-      Materialized as a table: the one heavy collapse, computed once and read by
-      both the published hourly-bars mart and the strategy models.
+    description: One-second bars deduped and resampled to hourly OHLCV. Materialized as table; the one heavy query, read by both the hourly bars mart and strategy models.
     columns:
       - name: trade_date
-        description: Calendar date (UTC) of the hour. Part of the grain.
+        description: Calendar date (UTC) of the hour.
       - name: hour_of_day
-        description: Hour of day (UTC), 0 to 23. Part of the grain.
+        description: Hour of day (UTC), 0 to 23.
       - name: hour_start_at
         description: Wall-clock start of the hour (UTC).
       - name: bar_open
-        description: Open of the hour, the earliest second bar's open.
+        description: Open of the hour; the earliest second bar's open.
       - name: bar_high
         description: Highest price across the hour's second bars.
       - name: bar_low
         description: Lowest price across the hour's second bars.
       - name: bar_close
-        description: Close of the hour, the latest second bar's close.
+        description: Close of the hour; the latest second bar's close.
       - name: volume
         description: Total base-asset (BTC) volume across the hour.
       - name: first_observed_second_at
@@ -31,59 +25,40 @@ models:
       - name: last_observed_second_at
         description: Timestamp of the latest second bar in the hour.
       - name: observed_seconds
-        description: Count of the hour's seconds that have a bar (coverage).
+        description: Count of seconds with a bar in the hour (coverage).
       - name: trade_count
         description: Total executed trades across the hour.
 
   - name: int_bitcoin__strategy_daily_trades
-    description: >
-      One simulated trade per day per hour of day: buy at the hour's entry price,
-      sell at its exit price. Entry is the hour's open when its first second prints
-      at the boundary, otherwise the carried-forward prior close. Exit is the hour's
-      close. Growth factor is exit / entry after a round-trip fee haircut
-      (fee_basis_points, default 0). Reads the hourly bars and preserves the daily
-      grain so results can later be re-sliced by date or day of week.
+    description: One simulated trade per (date, hour); entry at bar open or carried prior close, exit at bar close, growth factor net of fee.
     columns:
       - name: trade_date
-        description: Calendar date (UTC) of the trade. Part of the grain.
+        description: Trade date (UTC).
       - name: hour_of_day
-        description: Hour of day (UTC), 0 to 23, the strategy's chosen hour. Part of the grain.
+        description: Hour of day (UTC), 0 to 23.
       - name: entry_price
-        description: >
-          Buy price: the hour's open when its first second is at the boundary, else
-          the carried-forward prior bar's close. Guaranteed positive.
+        description: Bar open when the hour's first second is on the boundary, else the prior bar's close carried forward.
       - name: exit_price
-        description: "Sell price: the close of the hour's last second bar."
+        description: Bar close of the hour.
       - name: carried_price_staleness_seconds
-        description: >
-          Seconds between the carried price's source and the hour start. Zero when
-          the boundary was hit and the hour's own open was used.
+        description: Seconds from the carried price's source to the hour start. Zero when bar open was used.
       - name: growth_factor
-        description: >
-          The day's trade outcome, exit_price / entry_price, after the round-trip
-          fee haircut. The atom that compounds. Positive.
+        description: exit_price / entry_price after the round-trip fee haircut.
       - name: daily_return
-        description: growth_factor - 1, the day's fractional return.
+        description: growth_factor - 1.
 
   - name: int_bitcoin__strategy_equity_curve
-    description: >
-      The reinvested equity curve: for each hour of day, the running compounded
-      value across trade dates (exp(sum(ln(growth_factor)))). This is where
-      reinvestment and compounding live. Daily grain preserved so any date can be
-      inspected. Ephemeral, so its grain and value contracts are tested one layer
-      down on the strategy marts; its compounding is covered by a unit test.
+    description: Running compounded equity curve per hour of day; exp(sum(ln(growth_factor))) across trade dates.
     columns:
       - name: trade_date
-        description: Calendar date (UTC). Part of the grain.
+        description: Trade date (UTC).
       - name: hour_of_day
-        description: Hour of day (UTC), 0 to 23. Part of the grain.
+        description: Hour of day (UTC), 0 to 23.
       - name: growth_factor
-        description: The day's growth factor, carried through from daily trades.
+        description: The day's growth factor.
       - name: daily_return
-        description: The day's fractional return, carried through.
+        description: growth_factor - 1.
       - name: cumulative_growth_factor
-        description: >
-          Running product of growth factors for this hour up to and including this
-          date, the reinvested account value relative to a starting unit. Positive.
+        description: Running product of growth factors for this hour up to this date.
       - name: cumulative_return
-        description: cumulative_growth_factor - 1, the compounded return to date.
+        description: cumulative_growth_factor - 1.
