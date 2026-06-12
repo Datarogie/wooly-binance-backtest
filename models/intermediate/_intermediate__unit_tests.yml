@@ -1,0 +1,16 @@
+version: 2
+
+unit_tests:
+  - name: hourly_bars_resamples_ohlcv
+    description: Verifies order-sensitive OHLCV aggregation over a single hour of out-of-order second bars.
+    model: int_bitcoin__hourly_bars
+    given:
+      - input: ref('stg_binance__bitcoin_prices')
+        rows:
+          - {event_at: "2021-05-01 10:00:03", open: 240, high: 255, low: 235, close: 250, volume: 4, number_of_trades: 2}
+          - {event_at: "2021-05-01 10:00:00", open: 100, high: 150, low: 90, close: 120, volume: 1, number_of_trades: 3}
+          - {event_at: "2021-05-01 10:00:01", open: 120, high: 300, low: 80, close: 130, volume: 2, number_of_trades: 5}
+          - {event_at: "2021-05-01 10:00:02", open: 130, high: 200, low: 110, close: 240, volume: 3, number_of_trades: 1}
+    expect:
+      rows:
+        - {trade_date: "2021-05-01", hour_of_day: 10, hour_start_at: "2021-05-01 10:00:00", bar_open: 100, bar_high: 300, bar_low: 80, bar_close: 250, volume: 10, first_observed_second_at: "2021-05-01 10:00:00", last_observed_second_at: "2021-05-01 10:00:03", observed_seconds: 4, trade_count: 11}

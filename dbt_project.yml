@@ -25,7 +25,8 @@ vars:
 models:
   alpaca_takehome:
     staging:
-      +materialized: view
+      # table because the raw source is static; avoids re-scanning 30M rows on every downstream test
+      +materialized: table
       +schema: staging
     intermediate:
       +materialized: ephemeral

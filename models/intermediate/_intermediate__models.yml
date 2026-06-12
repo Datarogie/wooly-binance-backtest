@@ -1,0 +1,35 @@
+version: 2
+
+models:
+  - name: int_bitcoin__hourly_bars
+    description: One-second staging bars aggregated to hourly OHLCV (open = first, close = last, high = max, low = min, volume = sum).
+    columns:
+      - name: hourly_bar_id
+        description: Surrogate key derived from trade_date and hour_of_day.
+        data_tests:
+          - unique
+          - not_null
+      - name: trade_date
+        description: Calendar date (UTC) of the hour.
+      - name: hour_of_day
+        description: Hour of day (UTC), 0 to 23.
+      - name: hour_start_at
+        description: Start of the clock hour (UTC).
+      - name: bar_open
+        description: Open price of the hour (first second bar's open).
+      - name: bar_high
+        description: Highest price observed across the hour's second bars.
+      - name: bar_low
+        description: Lowest price observed across the hour's second bars.
+      - name: bar_close
+        description: Close price of the hour (last second bar's close).
+      - name: volume
+        description: Total base-asset (BTC) volume traded across the hour.
+      - name: first_observed_second_at
+        description: Timestamp of the earliest second bar in the hour.
+      - name: last_observed_second_at
+        description: Timestamp of the latest second bar in the hour.
+      - name: observed_seconds
+        description: Count of seconds with a bar in the hour, out of 3600 possible.
+      - name: trade_count
+        description: Total executed trades in the hour, summed from number_of_trades.
