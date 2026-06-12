@@ -5,9 +5,10 @@ models:
     description: Hourly OHLCV bars for BTCUSDT resampled from one-second staging bars; the published surface for any hourly Bitcoin question.
     data_tests:
       - dbt_utils.unique_combination_of_columns:
-          combination_of_columns:
-            - trade_date
-            - hour_of_day
+          arguments:
+            combination_of_columns:
+              - trade_date
+              - hour_of_day
     columns:
       - name: trade_date
         description: Calendar date (UTC) of the hour. Part of the primary key.
