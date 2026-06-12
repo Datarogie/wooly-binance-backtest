@@ -1,40 +1,25 @@
 # Bitcoin Backtesting Engine
 
-A reproducible backtesting engine for a single intraday Bitcoin trading strategy,
-built as a dbt project on Postgres and runnable end to end with one bash script.
+Intraday Bitcoin strategy backtester, built with dbt on Postgres. One command runs the full thing.
 
-The strategy under test: buy at the first second of a chosen hour, sell at the
-last second of that same hour, every day, reinvesting all proceeds so returns
-compound. It answers two questions: which hour of the day had the biggest
-compounded returns, and which had the lowest maximum losses.
-
-> Work in progress: the deeper sections below are placeholders and get filled in
-> as the models land.
+Strategy: buy at the first second of a chosen hour, sell at the last second of that same hour,
+reinvesting all proceeds daily. Two questions: which hour had the biggest compounded return,
+and which had the lowest maximum losses.
 
 ## Prerequisites
 
-Two things, both free and quick to install:
-
-- **Docker**, to run the database. On macOS or Windows the simplest option is
-  [Docker Desktop](https://docs.docker.com/get-docker/) (one installer); on
-  Linux, [Docker Engine](https://docs.docker.com/engine/install/). The project
-  drives it with `docker compose`, which ships with both.
-- **uv**, for Python and dbt:
-  [install guide](https://docs.astral.sh/uv/getting-started/installation/). It
-  reads the committed lockfile, so dbt and its dependencies are pulled in
-  automatically at pinned versions; no separate dbt or Python setup needed.
+- **Docker** to run the database ([Docker Desktop](https://docs.docker.com/get-docker/) on macOS/Windows; [Docker Engine](https://docs.docker.com/engine/install/) on Linux).
+- **uv** for Python and dbt: [install guide](https://docs.astral.sh/uv/getting-started/installation/). Reads the committed lockfile; no separate dbt or Python setup needed.
 
 ## Quick start
 
-1. Put the dataset CSV in the project root (it is never committed). Either use
-   the Kaggle CLI:
+1. Put the dataset CSV in the project root (never committed). Kaggle CLI:
 
    ```bash
    kaggle datasets download -d tzelal/binance-bitcoin-dataset-1s-timeframe-p2 --unzip -p .
    ```
 
-   or download and unzip it manually from
-   <https://www.kaggle.com/datasets/tzelal/binance-bitcoin-dataset-1s-timeframe-p2>.
+   or download and unzip manually from the Kaggle dataset page.
 
 2. Run everything:
 
@@ -45,53 +30,78 @@ Two things, both free and quick to install:
 `run.sh` starts Postgres, loads the data, builds and tests the dbt models, and
 prints the answers.
 
-### Running the steps individually
-
-The `Makefile` covers the steps that bundle multiple or non-dbt commands:
+### Running steps individually
 
 | command | does |
 | --- | --- |
 | `make up` / `make down` | start / stop Postgres |
-| `make load` | load the dataset |
+| `make load` | load the dataset into `raw.bitcoin_prices` |
+| `make deps` | install dbt packages |
+| `make build` | `dbt deps` then `dbt build` |
+| `make test` | run dbt tests |
+| `make answers` | print the answers from the built marts |
+| `make all` | full pipeline: up, load, build, answers |
 | `make lint` / `make format` | sqlfluff lint / fix |
 
-dbt itself you run directly, e.g. `dbt build` or
-`dbt build --select answer_strategy_questions`.
+The `Makefile` exports `DBT_PROFILES_DIR`. To run dbt directly:
+`uv run dbt build --profiles-dir .`
 
 ### Developing
 
-Set up the Python environment once:
-
 ```bash
-uv sync                      # create .venv with dbt + sqlfluff
-source .venv/bin/activate    # so dbt / sqlfluff run without the `uv run` prefix
+uv sync                      # create .venv
+source .venv/bin/activate    # or use direnv (committed .envrc)
 ```
-
-A committed `.envrc` does this activation automatically on `cd` if you use
-[direnv](https://direnv.net) (`direnv allow` once after cloning).
 
 ## Stack
 
 dbt Core 1.x on Postgres, managed with uv. Pinned to `dbt-postgres==1.10.0`
-rather than dbt Fusion / Core 2.0, which does not yet support the Postgres
-adapter.
+(dbt Fusion / Core 2.0 does not yet support the Postgres adapter).
 
 ## How it works
 
-_TODO: layering overview (staging, intermediate, marts), the
-general-vs-strategy split, and materialization choices._
+Three layers, each in its own schema:
 
-## Buy / sell rationale
+- **staging** (views, `staging` schema): `stg_binance__bitcoin_prices` cleans the
+  one-second bars - null/zero price filter, type casts, column aliases. Kept close
+  to source; no grain changes or business logic.
+- **intermediate** (ephemeral, `intermediate` schema): the heavy work.
+  `int_bitcoin__hourly_bars` dedupes to one second per timestamp then resamples to
+  hourly OHLCV (open = first, high = max, low = min, close = last, volume = sum);
+  materialized as a `table` since it is the one expensive query. The strategy
+  models (`int_bitcoin__strategy_daily_trades`, `int_bitcoin__strategy_equity_curve`)
+  simulate trades and compound the returns.
+- **marts** (tables, `marts` schema): `fct_bitcoin_hourly_bars` is a thin view
+  over the hourly bars intermediate; anything needing hourly OHLCV reads from here. `fct_strategy_performance_by_hour` and `fct_strategy_drawdown_by_hour`
+  are 24-row aggregates, one per hour of day, for BI tools or the analysis query.
 
-_TODO: buy = open of the hour's first second; sell = close of the last second;
-why this is faithful to buying at `:00:00` and selling at `:59:59`; and the
-carry-forward handling for gappy boundaries._
+The answers are produced by `analyses/answer_strategy_questions.sql`, an ad-hoc
+query over the marts run by `make answers`.
+
+## Buy / sell prices
+
+- **Buy = open of the hour's first second bar.** Covers `[HH:00:00, HH:00:01)`; its open is the first trade at the start of the hour.
+- **Sell = close of the hour's last second bar.** The last trade before the hour ends.
+
+**Carry-forward for gaps.** If the hour's first second has no bar, entry uses the
+prior hourly bar's close, lagged over hourly bars ordered by time. Staleness is
+flagged in `carried_price_staleness_seconds`. An hour with no data at all is a
+no-trade day.
 
 ## Assumptions
 
-_TODO: summary and link to `docs/assumptions.md`._
+Where the brief was ambiguous, the calls are documented in
+[`docs/assumptions.md`](docs/assumptions.md). Key ones: all analysis is UTC;
+prices are `numeric` not float; the backtest is frictionless by default with an
+optional `fee_basis_points` variable; answers are sample-period-dependent
+(Kaggle dump covers 2021-02-23 to 2024-08-27). SQL style rules are in
+[`docs/style-guide.md`](docs/style-guide.md).
 
 ## What I'd do next
 
-_TODO: documented-only future work (CI, incremental resample,
-timeframe-parameterized macro, multi-asset, seasonality, Lightdash)._
+- CI: sqlfluff lint + dbt unit tests on PRs against an ephemeral Postgres.
+- Parameterized resample macro (minute / 4-hour / day bars).
+- Incremental resample and drawdown for a live append-only feed.
+- Multi-asset support via a `dim_symbol`; day-of-week slicing via a `dim_date`.
+- Risk-adjusted ranking (e.g. deflated Sharpe for 24-hypothesis correction).
+- dbt Fusion once its Postgres adapter ships.
