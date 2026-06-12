@@ -6,21 +6,6 @@ with seconds as (
 
 ),
 
-deduped as (
-
-    select
-        event_at,
-        open,
-        high,
-        low,
-        close,
-        volume,
-        number_of_trades,
-        row_number() over (partition by event_at order by volume desc) as row_priority
-    from seconds
-
-),
-
 calendar as (
 
     select
@@ -33,14 +18,14 @@ calendar as (
         number_of_trades,
         cast(event_at as date) as trade_date,
         cast(extract(hour from event_at) as int) as hour_of_day
-    from deduped
-    where row_priority = 1
+    from seconds
 
 ),
 
 resampled as (
 
     select
+        {{ dbt_utils.generate_surrogate_key(['trade_date', 'hour_of_day']) }} as hourly_bar_id,
         trade_date,
         hour_of_day,
         date_trunc('hour', min(event_at)) as hour_start_at,

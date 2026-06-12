@@ -2,20 +2,13 @@ version: 2
 
 models:
   - name: fct_bitcoin_hourly_bars
-    description: >
-      Hourly OHLCV bars for BTCUSDT, resampled from the one-second staging bars
-      over each clock hour (open = first, high = max, low = min, close = last,
-      volume = sum). The reusable general-layer product: any hourly Bitcoin
-      question reads this instead of touching raw data. Audit columns expose how
-      well each hour is covered so a thin bar can be judged before it is trusted.
-      The one heavy collapse in the project (110M seconds to days x 24 hours);
-      materialized as a table because everything downstream is tiny.
-    data_tests:
-      - dbt_utils.unique_combination_of_columns:
-          combination_of_columns:
-            - trade_date
-            - hour_of_day
+    description: Hourly OHLCV bars for BTCUSDT, resampled from one-second staging bars (open = first, high = max, low = min, close = last, volume = sum).
     columns:
+      - name: hourly_bar_id
+        description: Surrogate key derived from trade_date and hour_of_day.
+        data_tests:
+          - unique
+          - not_null
       - name: trade_date
         description: Calendar date (UTC) of the hour. Part of the primary key.
         data_tests:
@@ -25,52 +18,47 @@ models:
         data_tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0
-              max_value: 23
+              arguments:
+                min_value: 0
+                max_value: 23
       - name: hour_start_at
-        description: >
-          Wall-clock start of the hour (UTC), truncated from the first observed
-          second. The instant the strategy's entry is anchored to.
+        description: Start of the clock hour (UTC).
         data_tests:
           - not_null
       - name: bar_open
-        description: >
-          Open of the hour: the open price of the earliest second bar in the
-          hour. The strategy's entry price when the hour's first second is
-          present.
+        description: Open price of the hour (first second bar's open).
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
       - name: bar_high
         description: Highest price observed across the hour's second bars.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
       - name: bar_low
         description: Lowest price observed across the hour's second bars.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
       - name: bar_close
-        description: >
-          Close of the hour: the close price of the latest second bar in the
-          hour. The strategy's exit price.
+        description: Close price of the hour (last second bar's close).
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
       - name: volume
         description: Total base-asset (BTC) volume traded across the hour.
         data_tests:
           - not_null
       - name: first_observed_second_at
-        description: >
-          Timestamp of the earliest second bar in the hour. When this is later
-          than hour_start_at, the hour opened with a gap and the strategy's entry
-          carries forward instead of using bar_open.
+        description: Timestamp of the earliest second bar in the hour.
         data_tests:
           - not_null
       - name: last_observed_second_at
@@ -78,21 +66,17 @@ models:
         data_tests:
           - not_null
       - name: observed_seconds
-        description: >
-          How many of the hour's 3600 possible seconds actually have a bar. The
-          coverage measure: a low value means a thin, less trustworthy hour. Not
-          a count of trades.
+        description: Count of seconds with a bar in the hour, out of 3600 possible.
         data_tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: "{{ var('hourly_coverage_floor_seconds') }}"
-              max_value: 3600
-              row_condition: "true"
+              arguments:
+                min_value: "{{ var('hourly_coverage_floor_seconds') }}"
+                max_value: 3600
+                row_condition: "true"
               config:
                 severity: warn
       - name: trade_count
-        description: >
-          Total individual executed trades across the hour, summed from the
-          source number_of_trades. Distinct from observed_seconds.
+        description: Total executed trades in the hour, summed from number_of_trades.
         data_tests:
           - not_null
