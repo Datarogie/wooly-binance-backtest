@@ -32,3 +32,13 @@ uv run dbt build
 
 echo "[4/4] answering the questions"
 bash scripts/print_answers.sh
+
+cat <<'EOF'
+
+Run more yourself:
+  uv run dbt build                 # any dbt or sqlfluff command; uv run needs no setup
+  make build / make test / make answers / make lightdash
+  source .venv/bin/activate        # then bare: dbt build, sqlfluff lint (no prefix)
+Calling dbt directly (not via make)? Set the profile dir once in the shell:
+  export DBT_PROFILES_DIR="$(pwd)"
+EOF
