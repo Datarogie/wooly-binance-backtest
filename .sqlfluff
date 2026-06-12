@@ -42,3 +42,7 @@ aliasing = explicit
 
 [sqlfluff:rules:ambiguous.column_references]
 group_by_and_order_by_style = explicit
+
+[sqlfluff:rules:references.keywords]
+# OHLCV canonical names are non-reserved postgres keywords; allow unquoted
+ignore_words = open,high,low,close
