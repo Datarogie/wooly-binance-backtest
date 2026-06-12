@@ -1,5 +1,7 @@
 with source as (
+
     select * from {{ source('binance', 'bitcoin_prices') }}
+
 ),
 
 final as (

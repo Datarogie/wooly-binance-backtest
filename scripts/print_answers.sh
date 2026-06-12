@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Compile the answer analysis and run it against the built marts, printing one
-# labeled row per question. Shared by `make answers` and run.sh.
+# Compile the answer analysis and print results.
 set -euo pipefail
 
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -12,17 +12,18 @@ auto-fix.
 - Lines wrap at 120 characters.
 - Explicit column aliases; explicit `asc` / `desc` on every `order by` term.
 - Explicit `group by` / `order by` columns, not positional numbers.
+- CTEs: no blank line after `(` or before `)`. Add a blank line before `from`
+  when the `select` lists multiple columns; omit it for bare `select * from ref(...)` CTEs.
 
 ## Model structure
 
 - Every model opens with one or more import CTEs:
-  `with source as (select * from {{ ref_or_source }})`. Import CTEs do no work
-  beyond optional filtering.
+  `with source as (select * from {{ ref_or_source }})`. Import CTEs are
+  pass-throughs; light filtering only.
 - Every model ends with a `final` CTE that lists all columns explicitly, then
   `select * from final`.
 - All columns are explicitly aliased whenever a join is present.
-- Derived columns are computed once, as far upstream as their inputs allow, and
-  reused downstream rather than recomputed.
+- Derived columns are computed once, as far upstream as their inputs allow. Don't recompute downstream.
 - References are always `{{ ref() }}` / `{{ source() }}`; never a hardcoded
   schema or table name.
 
@@ -41,8 +42,8 @@ output or down from a layer above.
   never a mart. Deduping, grain changes, derivations, and business logic live
   here. If an intermediate needs something from a mart, shift that logic left
   into an intermediate instead.
-- **Marts** (`fct_` / `dim_`): read staging, intermediate, or other marts. The
-  presentation layer, conformed and join-free for BI.
+- **Marts** (`fct_` / `dim_`): read staging, intermediate, or other marts.
+  Grain is established here; BI tools read directly from marts.
 - **BI / analytics** (optional): if added, wide self-serve models read from marts
   only.
 - Final answers live in `analyses/`, an ad-hoc query over the marts, never a core
@@ -67,8 +68,7 @@ output or down from a layer above.
 - Explanation lives in `schema.yml` `description` fields at the model and column
   level, not in inline SQL comments. Every model and every column has a
   description.
-- Well-written model SQL is self-documenting and should not need inline comments.
-  Put any rationale in the model or column description instead.
+- Model SQL should be self-documenting. If something needs explaining, it goes in the description, not a comment.
 
 ## Testing
 
