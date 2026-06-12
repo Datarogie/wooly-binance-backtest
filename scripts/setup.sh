@@ -5,6 +5,7 @@
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
+export DBT_PROFILES_DIR="$(pwd)"
 
 uv sync
 uv run dbt deps
