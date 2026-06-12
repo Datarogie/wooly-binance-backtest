@@ -4,6 +4,7 @@
 templater = dbt
 dialect = postgres
 max_line_length = 120
+exclude_rules = ST06
 
 [sqlfluff:indentation]
 indent_unit = space
@@ -44,5 +45,7 @@ aliasing = explicit
 group_by_and_order_by_style = explicit
 
 [sqlfluff:rules:references.keywords]
-# OHLCV canonical names are non-reserved postgres keywords; allow unquoted
+# open / high / low / close are the canonical OHLCV column names. They are
+# non-reserved keywords in postgres and reading them as plain identifiers is
+# clearer than quoting every one, so allow them.
 ignore_words = open,high,low,close

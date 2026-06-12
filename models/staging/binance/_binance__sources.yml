@@ -2,16 +2,14 @@ version: 2
 
 sources:
   - name: binance
-    description: Raw Binance BTCUSDT klines loaded verbatim from the project-root CSV. One row per one-second bar.
+    description: Raw Binance BTCUSDT klines loaded from CSV. One row per one-second bar, static.
     schema: raw
     tables:
       - name: bitcoin_prices
-        description: >
-          One-second OHLCV bars for BTCUSDT. `open_time` and `close_time` are
-          datetime values in this dump, not epoch integers.
+        description: One-second OHLCV bars for BTCUSDT. open_time and close_time are datetimes, not epoch integers.
         columns:
           - name: open_time
-            description: Start of the one-second interval (UTC), the bar's stamp.
+            description: Start of the one-second bar (UTC).
           - name: open
             description: First traded price in the second.
           - name: high
@@ -21,16 +19,16 @@ sources:
           - name: close
             description: Last traded price in the second.
           - name: volume
-            description: Base-asset (BTC) volume traded in the second.
+            description: BTC volume traded in the second.
           - name: close_time
-            description: End of the one-second interval (UTC).
+            description: End of the one-second bar (UTC).
           - name: quote_asset_volume
-            description: Quote-asset (USDT) volume traded in the second.
+            description: USDT volume traded in the second.
           - name: number_of_trades
-            description: Count of individual executed trades in the second.
+            description: Count of executed trades in the second.
           - name: taker_buy_base_asset_volume
-            description: Base-asset volume from taker buy orders.
+            description: BTC volume from taker buy orders.
           - name: taker_buy_quote_asset_volume
-            description: Quote-asset volume from taker buy orders.
+            description: USDT volume from taker buy orders.
           - name: ignore
-            description: Unused Binance field, carried through and not consumed.
+            description: Unused Binance field.

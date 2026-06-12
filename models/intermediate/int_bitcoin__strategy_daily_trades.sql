@@ -36,7 +36,7 @@ priced as (
     from carried
 ),
 
-factored as (
+final as (
     select
         trade_date,
         hour_of_day,
@@ -46,23 +46,14 @@ factored as (
         round(
             (exit_price / entry_price)
             * (1 - {{ var('fee_basis_points') }} / 10000.0), 15
-        ) as growth_factor
+        ) as growth_factor,
+        round(
+            (exit_price / entry_price)
+            * (1 - {{ var('fee_basis_points') }} / 10000.0), 15
+        ) - 1 as daily_return
 
     from priced
     where entry_price is not null and entry_price > 0
-),
-
-final as (
-    select
-        trade_date,
-        hour_of_day,
-        entry_price,
-        exit_price,
-        carried_price_staleness_seconds,
-        growth_factor,
-        growth_factor - 1 as daily_return
-
-    from factored
 )
 
 select * from final

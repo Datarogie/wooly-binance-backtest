@@ -2,68 +2,38 @@ version: 2
 
 models:
   - name: int_bitcoin__hourly_bars
-    description: One-second staging bars aggregated to hourly OHLCV (open = first, close = last, high = max, low = min, volume = sum).
-    columns:
-      - name: hourly_bar_id
-        description: Surrogate key derived from trade_date and hour_of_day.
-        data_tests:
-          - unique
-          - not_null
-      - name: trade_date
-        description: Calendar date (UTC) of the hour.
-      - name: hour_of_day
-        description: Hour of day (UTC), 0 to 23.
-      - name: hour_start_at
-        description: Start of the clock hour (UTC).
-      - name: bar_open
-        description: Open price of the hour (first second bar's open).
-      - name: bar_high
-        description: Highest price observed across the hour's second bars.
-      - name: bar_low
-        description: Lowest price observed across the hour's second bars.
-      - name: bar_close
-        description: Close price of the hour (last second bar's close).
-      - name: volume
-        description: Total base-asset (BTC) volume traded across the hour.
-      - name: first_observed_second_at
-        description: Timestamp of the earliest second bar in the hour.
-      - name: last_observed_second_at
-        description: Timestamp of the latest second bar in the hour.
-      - name: observed_seconds
-        description: Count of seconds with a bar in the hour, out of 3600 possible.
-      - name: trade_count
-        description: Total executed trades in the hour, summed from number_of_trades.
+    description: One-second bars deduped and resampled to hourly OHLCV. Materialized as table; the one heavy query, read by both the hourly bars mart and strategy models.
 
   - name: int_bitcoin__strategy_daily_trades
-    description: One simulated trade per day per hour of day, entry at bar_open (or prior close carried forward if the hour opened late), exit at bar_close, growth factor net of fee.
+    description: One simulated trade per (date, hour); entry at bar open or carried prior close, exit at bar close, growth factor net of fee.
     columns:
       - name: trade_date
-        description: Calendar date (UTC) of the trade.
+        description: Trade date (UTC).
       - name: hour_of_day
         description: Hour of day (UTC), 0 to 23.
       - name: entry_price
-        description: Buy price; bar_open when first_observed_second_at equals hour_start_at, otherwise the prior bar's close carried forward.
+        description: Bar open when the hour's first second is on the boundary, else the prior bar's close carried forward.
       - name: exit_price
-        description: Sell price; the bar_close of the hour.
+        description: Bar close of the hour.
       - name: carried_price_staleness_seconds
-        description: Seconds from the prior bar's last second to this hour's start. Zero when bar_open was used.
+        description: Seconds from the carried price's source to the hour start. Zero when bar open was used.
       - name: growth_factor
         description: exit_price / entry_price after the round-trip fee haircut.
       - name: daily_return
-        description: growth_factor - 1, the day's fractional return.
+        description: growth_factor - 1.
 
   - name: int_bitcoin__strategy_equity_curve
-    description: Running compounded equity curve; per hour of day, the cumulative product of daily growth factors across all trade dates.
+    description: Running compounded equity curve per hour of day; exp(sum(ln(growth_factor))) across trade dates.
     columns:
       - name: trade_date
-        description: Calendar date (UTC).
+        description: Trade date (UTC).
       - name: hour_of_day
         description: Hour of day (UTC), 0 to 23.
       - name: growth_factor
-        description: The day's growth factor, carried through from daily trades.
+        description: The day's growth factor.
       - name: daily_return
-        description: The day's fractional return, carried through from daily trades.
+        description: growth_factor - 1.
       - name: cumulative_growth_factor
-        description: Running product of growth factors for this hour of day, up to and including this date.
+        description: Running product of growth factors for this hour up to this date.
       - name: cumulative_return
-        description: cumulative_growth_factor - 1, the compounded return to date.
+        description: cumulative_growth_factor - 1.

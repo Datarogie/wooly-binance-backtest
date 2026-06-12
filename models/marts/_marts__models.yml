@@ -2,13 +2,14 @@ version: 2
 
 models:
   - name: fct_bitcoin_hourly_bars
-    description: Hourly OHLCV bars for BTCUSDT, resampled from one-second staging bars (open = first, high = max, low = min, close = last, volume = sum).
+    description: Hourly OHLCV bars for BTCUSDT resampled from one-second staging bars; the published surface for any hourly Bitcoin question.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - trade_date
+              - hour_of_day
     columns:
-      - name: hourly_bar_id
-        description: Surrogate key derived from trade_date and hour_of_day.
-        data_tests:
-          - unique
-          - not_null
       - name: trade_date
         description: Calendar date (UTC) of the hour. Part of the primary key.
         data_tests:
@@ -22,11 +23,11 @@ models:
                 min_value: 0
                 max_value: 23
       - name: hour_start_at
-        description: Start of the clock hour (UTC).
+        description: Wall-clock start of the hour (UTC), truncated from the first observed second.
         data_tests:
           - not_null
       - name: bar_open
-        description: Open price of the hour (first second bar's open).
+        description: Open price of the hour; the open of the earliest second bar.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
@@ -47,7 +48,7 @@ models:
               arguments:
                 expression: "> 0"
       - name: bar_close
-        description: Close price of the hour (last second bar's close).
+        description: Close price of the hour; the close of the latest second bar.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
@@ -58,7 +59,7 @@ models:
         data_tests:
           - not_null
       - name: first_observed_second_at
-        description: Timestamp of the earliest second bar in the hour.
+        description: Timestamp of the earliest second bar; when later than hour_start_at the strategy carries forward the prior close.
         data_tests:
           - not_null
       - name: last_observed_second_at
@@ -80,3 +81,89 @@ models:
         description: Total executed trades in the hour, summed from number_of_trades.
         data_tests:
           - not_null
+
+  - name: fct_strategy_performance_by_hour
+    description: One row per hour of day summarizing the reinvested strategy's compounded return and daily return statistics over the full history.
+    columns:
+      - name: hour_of_day
+        description: Hour of day (UTC), 0 to 23. Primary key.
+        data_tests:
+          - unique
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 23
+      - name: total_compounded_return
+        description: Compounded return at the final trade date; the equity curve's last value minus one.
+        data_tests:
+          - not_null
+      - name: trading_days
+        description: Number of dates this hour traded.
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
+      - name: average_daily_return
+        description: Mean of the hour's daily returns across all trading days.
+        data_tests:
+          - not_null
+      - name: daily_return_standard_deviation
+        description: Sample standard deviation of the hour's daily returns.
+        data_tests:
+          - not_null
+      - name: first_trade_date
+        description: Earliest date this hour traded.
+        data_tests:
+          - not_null
+      - name: last_trade_date
+        description: Latest date this hour traded; where the compounded return is read.
+        data_tests:
+          - not_null
+
+  - name: fct_strategy_drawdown_by_hour
+    description: One row per hour of day exposing the strategy's loss profile; maximum drawdown, worst loss below starting capital, and worst single-day return.
+    columns:
+      - name: hour_of_day
+        description: Hour of day (UTC), 0 to 23. Primary key.
+        data_tests:
+          - unique
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 23
+      - name: maximum_drawdown
+        description: Deepest peak-to-trough drop on the reinvested equity curve measured against the running peak. Zero or negative.
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "<= 0"
+      - name: maximum_loss_from_start
+        description: Worst loss below starting capital, floored at zero so an hour never underwater reads as no loss.
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+      - name: worst_single_day_return
+        description: The most negative single-day return this hour ever posted.
+        data_tests:
+          - not_null
+      - name: first_trade_date
+        description: Earliest date this hour traded.
+        data_tests:
+          - not_null
+      - name: last_trade_date
+        description: Latest date this hour traded.
+        data_tests:
+          - not_null
+      - name: trading_days
+        description: Number of dates this hour traded.
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
