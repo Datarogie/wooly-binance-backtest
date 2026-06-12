@@ -4,12 +4,9 @@
 templater = dbt
 dialect = postgres
 max_line_length = 120
-<<<<<<< HEAD
 # ST06 enforces a fixed select column order (simple before aggregates); it is
 # opinionated and excluded in the dbt Labs convention, so we let models order
 # columns for readability.
-=======
->>>>>>> origin/main
 exclude_rules = ST06
 
 [sqlfluff:indentation]

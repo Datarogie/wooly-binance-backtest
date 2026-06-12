@@ -41,14 +41,6 @@ format:
 		uv run sqlfluff fix models macros analyses; \
 	fi
 
-<<<<<<< HEAD
-# Validate the Lightdash metadata (dimensions + metrics in the marts' schema.yml)
-# against the Lightdash schema, offline. Compiles the explores from the dbt
-# manifest; --skip-warehouse-catalog uses the YAML column types so it needs no
-# SSL warehouse round-trip. Needs the Lightdash CLI (npm i -g @lightdash/cli) and
-# puts the project's dbt on PATH so the CLI's bare `dbt` call resolves to it.
-=======
->>>>>>> origin/main
 lightdash:
 	PATH="$(CURDIR)/.venv/bin:$$PATH" lightdash compile \
 		--project-dir $(CURDIR) --profiles-dir $(CURDIR) --skip-warehouse-catalog

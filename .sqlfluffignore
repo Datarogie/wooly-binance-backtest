@@ -1,10 +1,4 @@
-<<<<<<< HEAD
-.venv/
-dbt_packages/
 target/
+dbt_packages/
+.venv/
 logs/
-=======
-target/
-dbt_packages/
-.venv/
->>>>>>> origin/main
