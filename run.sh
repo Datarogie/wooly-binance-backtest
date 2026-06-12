@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# Single entrypoint. From a clean clone with the Binance 1-second CSV in the
-# project root, this starts the database, loads the data, builds and tests the
-# dbt project, and prints the answer to each question. Re-runnable: a reload is
-# skipped when the data is already present.
+# Start db, load data, build dbt project, print answers. Re-runnable; skips load if data exists.
 set -euo pipefail
 
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
