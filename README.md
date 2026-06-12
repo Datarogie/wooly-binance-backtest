@@ -1,12 +1,10 @@
 # Bitcoin Backtesting Engine
 
-A reproducible backtesting engine for a single intraday Bitcoin trading strategy,
-built as a dbt project on Postgres and runnable end to end with one bash script.
+Intraday Bitcoin strategy backtester, built with dbt on Postgres. One command runs the full thing.
 
-The strategy: buy at the first second of a chosen hour, sell at the last second
-of that same hour, every day, reinvesting all proceeds. It answers two questions:
-which hour of the day had the biggest compounded returns, and which had the lowest
-maximum losses.
+Strategy: buy at the first second of a chosen hour, sell at the last second of that same hour,
+reinvesting all proceeds daily. Two questions: which hour had the biggest compounded return,
+and which had the lowest maximum losses.
 
 ## Prerequisites
 
@@ -74,8 +72,7 @@ Three layers, each in its own schema:
   models (`int_bitcoin__strategy_daily_trades`, `int_bitcoin__strategy_equity_curve`)
   simulate trades and compound the returns.
 - **marts** (tables, `marts` schema): `fct_bitcoin_hourly_bars` is a thin view
-  over the hourly bars intermediate - the published surface for any hourly Bitcoin
-  question. `fct_strategy_performance_by_hour` and `fct_strategy_drawdown_by_hour`
+  over the hourly bars intermediate; anything needing hourly OHLCV reads from here. `fct_strategy_performance_by_hour` and `fct_strategy_drawdown_by_hour`
   are 24-row aggregates, one per hour of day, for BI tools or the analysis query.
 
 The answers are produced by `analyses/answer_strategy_questions.sql`, an ad-hoc
@@ -93,7 +90,7 @@ no-trade day.
 
 ## Assumptions
 
-Deliberate decisions where the prompt is ambiguous are in
+Where the brief was ambiguous, the calls are documented in
 [`docs/assumptions.md`](docs/assumptions.md). Key ones: all analysis is UTC;
 prices are `numeric` not float; the backtest is frictionless by default with an
 optional `fee_basis_points` variable; answers are sample-period-dependent

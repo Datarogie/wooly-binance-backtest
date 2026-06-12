@@ -18,13 +18,12 @@ auto-fix.
 ## Model structure
 
 - Every model opens with one or more import CTEs:
-  `with source as (select * from {{ ref_or_source }})`. Import CTEs do no work
-  beyond optional filtering.
+  `with source as (select * from {{ ref_or_source }})`. Import CTEs are
+  pass-throughs; light filtering only.
 - Every model ends with a `final` CTE that lists all columns explicitly, then
   `select * from final`.
 - All columns are explicitly aliased whenever a join is present.
-- Derived columns are computed once, as far upstream as their inputs allow, and
-  reused downstream rather than recomputed.
+- Derived columns are computed once, as far upstream as their inputs allow. Don't recompute downstream.
 - References are always `{{ ref() }}` / `{{ source() }}`; never a hardcoded
   schema or table name.
 
@@ -69,8 +68,7 @@ output or down from a layer above.
 - Explanation lives in `schema.yml` `description` fields at the model and column
   level, not in inline SQL comments. Every model and every column has a
   description.
-- Well-written model SQL is self-documenting and should not need inline comments.
-  Put any rationale in the model or column description instead.
+- Model SQL should be self-documenting. If something needs explaining, it goes in the description, not a comment.
 
 ## Testing
 

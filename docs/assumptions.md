@@ -29,18 +29,17 @@ here rather than buried in code.
   accumulates floating-point error; `numeric` keeps it exact. The log-space
   cumulative product (`exp(sum(ln(growth_factor)))`) also stays high-precision in
   Postgres `numeric`. Cumulative and growth values are rounded to 15 decimals to
-  shed sub-1e-15 residue, far below any financially meaningful scale, so results
-  are deterministic.
+  drop sub-1e-15 residue; results are deterministic.
 
 ## Strategy
 
 - **Buy and sell prices.** Buy is the open of the hour's first second bar (the
   first trade at `HH:00:00`); sell is the close of the hour's last second bar
-  (the last trade before `HH+1:00:00`). Symmetric at the two edges and faithful
-  to buying at `:00:00` and selling at `:59:59`.
+  (the last trade before `HH+1:00:00`). Matches buying at `:00:00` and selling
+  at `:59:59` exactly.
 - **Carry-forward.** When the hour's first second has no bar, the entry carries
   forward the prior hourly bar's close via a lag over hourly bars ordered by
-  time, which skips empty hours automatically and so handles multi-hour gaps.
+  time; multi-hour gaps are handled automatically.
   Staleness is flagged in `carried_price_staleness_seconds`. An hour with no data
   at all is a no-trade day, not carried forward. Crypto trades 24/7, so any gap
   is missing data or exchange downtime, not a market session boundary.
@@ -48,8 +47,8 @@ here rather than buried in code.
   day's buy, so daily growth factors multiply. "Biggest returns" is the
   geometric (compounded) return, read at the **last** trade date, never the peak
   ever reached, so a peak-then-decline hour is not flattered.
-- **Maximum losses.** Exposed three ways so the second question is answerable
-  under any reading: the maximum drawdown against the running peak (the primary
+- **Maximum losses.** Tracked three ways so the answer holds regardless of how
+  "maximum losses" is read: the maximum drawdown against the running peak (the primary
   reading used in the answer query), the worst loss below starting capital, and
   the worst single-day return. The answer query labels the chosen one; switching
   is a label change, no rebuild.
@@ -61,7 +60,7 @@ here rather than buried in code.
 ## Coverage
 
 - **Trust floor.** An hour's `observed_seconds` (how many of its 3600 seconds
-  actually have a bar) is a data-trust measure. Hours below a documented floor
+  have a bar) is a data quality signal. Hours below a documented floor
   (`hourly_coverage_floor_seconds`, default 1800) raise a WARN, not an error, so
   thin hours surface without failing the build. Two such hours exist in this
   slice (exchange downtime on 2021-04-25).
