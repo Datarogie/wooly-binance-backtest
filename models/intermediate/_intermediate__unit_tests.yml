@@ -2,13 +2,7 @@ version: 2
 
 unit_tests:
   - name: hourly_bars_resamples_ohlcv
-    description: >
-      Over a single hour of second bars, open is the earliest bar's open, close the
-      latest bar's close, high the max, low the min, volume the sum, and trade_date
-      and hour_of_day are derived from event_at. The fixture puts the max high and
-      min low mid-hour and feeds rows out of order, so an order-blind aggregate
-      would fail; a lower-volume duplicate second checks that dedupe keeps the
-      highest-volume survivor.
+    description: OHLCV resamples correctly from out-of-order second bars; duplicate second keeps highest-volume row.
     model: int_bitcoin__hourly_bars
     given:
       - input: ref('stg_binance__bitcoin_prices')
@@ -23,12 +17,7 @@ unit_tests:
         - {trade_date: "2021-05-01", hour_of_day: 10, hour_start_at: "2021-05-01 10:00:00", bar_open: 100, bar_high: 300, bar_low: 80, bar_close: 250, volume: 10, first_observed_second_at: "2021-05-01 10:00:00", last_observed_second_at: "2021-05-01 10:00:03", observed_seconds: 4, trade_count: 11}
 
   - name: daily_trades_growth_factor_and_fee
-    description: >
-      Growth factor is exit / entry after the round-trip fee haircut, and
-      daily_return is growth_factor - 1. Run with fee_basis_points = 100 (1 percent
-      round trip) so the haircut is visible: entry 100, exit 110 gives 1.10 gross,
-      times (1 - 0.01) = 1.089 net, daily_return 0.089. The boundary is hit (first
-      second at hour_start_at) so entry is this hour's own open.
+    description: Entry 100, exit 110, 1% fee gives growth_factor 1.089 and daily_return 0.089.
     model: int_bitcoin__strategy_daily_trades
     overrides:
       vars:
@@ -42,14 +31,7 @@ unit_tests:
         - {trade_date: "2021-06-01", hour_of_day: 9, entry_price: 100, exit_price: 110, carried_price_staleness_seconds: 0, growth_factor: "1.089000000000000", daily_return: "0.089000000000000"}
 
   - name: daily_trades_carry_forward_across_gap
-    description: >
-      Frictionless (default fee 0). The later bar opens late (its first second is
-      after the hour start), so its entry must carry forward the prior bar's close
-      (200), not use its own open (999). A fully missing hour between the two is
-      absent from the input, proving lag reaches across the gap rather than needing
-      a calendar spine. Staleness is measured from the prior bar's last observed
-      second to this hour's start (1 hour + 1 second = 3601). Hour 0 hits its
-      boundary cleanly, so it trades on its own open.
+    description: Late-opening bar uses prior close (not its own open); missing hour skipped via lag; staleness correct.
     model: int_bitcoin__strategy_daily_trades
     given:
       - input: ref('int_bitcoin__hourly_bars')
@@ -62,11 +44,7 @@ unit_tests:
         - {trade_date: "2021-07-01", hour_of_day: 2, entry_price: 200, exit_price: 220, carried_price_staleness_seconds: 3601, growth_factor: "1.100000000000000", daily_return: "0.100000000000000"}
 
   - name: equity_curve_compounds_to_hand_computed
-    description: >
-      A known growth-factor sequence for one hour compounds to a hand-computed
-      cumulative product. 1.10, then 0.50, then 2.00 gives running products 1.10,
-      0.55, 1.10. Proves the exp(sum(ln)) running product is correct, including a
-      losing day in the middle.
+    description: Growth factors 1.10, 0.50, 2.00 compound to running products 1.10, 0.55, 1.10.
     model: int_bitcoin__strategy_equity_curve
     given:
       - input: ref('int_bitcoin__strategy_daily_trades')

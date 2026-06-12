@@ -2,49 +2,45 @@ version: 2
 
 models:
   - name: stg_binance__bitcoin_prices
-    description: >
-      One-second BTCUSDT bars from the Binance source: columns aliased to project
-      names and cast to numeric, with null or non-positive prices filtered out.
-      Kept close to source. Grain enforcement (one row per second) and the
-      calendar derivations happen downstream in the hourly-bars model.
+    description: One-second BTCUSDT bars cleaned and aliased from source; prices cast to numeric, nulls and non-positive prices filtered.
     columns:
       - name: event_at
-        description: >
-          Start of the one-second interval (UTC), carried straight from the
-          source open_time.
+        description: Start of the one-second bar (UTC), from source open_time.
         data_tests:
           - not_null
       - name: open
-        description: First traded price in the second, the bar's open.
+        description: First traded price in the second.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
       - name: high
         description: Highest traded price in the second.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
       - name: low
         description: Lowest traded price in the second.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
       - name: close
-        description: Last traded price in the second, the bar's close.
+        description: Last traded price in the second.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
       - name: volume
-        description: Base-asset (BTC) volume traded in the second.
+        description: BTC volume traded in the second.
         data_tests:
           - not_null
       - name: number_of_trades
-        description: >
-          Count of executed trades in the second, carried through so the hourly
-          bars can sum it into a trade_count.
+        description: Count of executed trades in the second.
         data_tests:
           - not_null

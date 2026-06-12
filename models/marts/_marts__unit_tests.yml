@@ -2,11 +2,7 @@ version: 2
 
 unit_tests:
   - name: performance_reads_last_date_not_peak
-    description: >
-      total_compounded_return must be the equity-curve value at the LAST trade
-      date, not the maximum ever reached. The fixture for hour 7 peaks at a
-      cumulative_return of 0.50 mid-history, then ends at 0.20, so a max()
-      implementation would wrongly report 0.50. The correct answer is 0.20.
+    description: total_compounded_return is the equity curve value at the last trade date, not the peak; hour 7 peaks at 0.50 mid-history but ends at 0.20.
     model: fct_strategy_performance_by_hour
     given:
       - input: ref('int_bitcoin__strategy_equity_curve')
@@ -22,13 +18,7 @@ unit_tests:
         - {hour_of_day: 7, total_compounded_return: "0.20", trading_days: 3, first_trade_date: "2022-01-01", last_trade_date: "2022-01-03"}
 
   - name: drawdown_drop_recover_new_low
-    description: >
-      An equity path that rises, drops, partially recovers, then falls to a new
-      low. maximum_drawdown must be measured against the RUNNING PEAK (1.20), not
-      the prior value, so the partial recovery to 1.10 does not reset the peak
-      and the new low at 0.60 yields the deepest drawdown of -0.50. The worst
-      single-day return is -0.50 and the worst loss below starting capital is
-      0.40 (cumulative_return bottomed at -0.40, floored result stays positive).
+    description: maximum_drawdown uses the running peak (1.20) so partial recovery to 1.10 does not reset it; new low at 0.60 gives max drawdown -0.50.
     model: fct_strategy_drawdown_by_hour
     given:
       - input: ref('int_bitcoin__strategy_equity_curve')
