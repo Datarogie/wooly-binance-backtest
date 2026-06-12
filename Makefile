@@ -1,4 +1,4 @@
-.PHONY: up down load deps build answers all lint format test
+.PHONY: up down load deps build answers all lint format test lightdash
 
 # Point dbt at the project-local profiles.yml (same dir sqlfluff already uses).
 export DBT_PROFILES_DIR := $(CURDIR)
@@ -40,3 +40,7 @@ format:
 	else \
 		uv run sqlfluff fix models macros analyses; \
 	fi
+
+lightdash:
+	PATH="$(CURDIR)/.venv/bin:$$PATH" lightdash compile \
+		--project-dir $(CURDIR) --profiles-dir $(CURDIR) --skip-warehouse-catalog

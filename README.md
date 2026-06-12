@@ -42,6 +42,7 @@ prints the answers.
 | `make answers` | print the answers from the built marts |
 | `make all` | full pipeline: up, load, build, answers |
 | `make lint` / `make format` | sqlfluff lint / fix |
+| `make lightdash` | validate Lightdash metadata offline (see below) |
 
 The `Makefile` exports `DBT_PROFILES_DIR`. To run dbt directly:
 `uv run dbt build --profiles-dir .`
@@ -52,6 +53,35 @@ The `Makefile` exports `DBT_PROFILES_DIR`. To run dbt directly:
 uv sync                      # create .venv
 source .venv/bin/activate    # or use direnv (committed .envrc)
 ```
+
+## Explore in Lightdash
+
+The two per-hour strategy marts are annotated for [Lightdash](https://www.lightdash.com),
+explorable with no extra modeling. The metadata lives in
+`models/marts/_marts__models.yml` under each column's `config.meta`:
+`hour_of_day` and the trade-date columns are dimensions; the headline measures
+(`total_compounded_return`, `maximum_drawdown`, `maximum_loss_from_start`,
+`worst_single_day_return`, `average_daily_return`, and the comparability columns)
+are metrics. Each mart is already one row per hour, so metrics use `type: max`,
+a passthrough that returns the hour's single value when grouped by `hour_of_day`.
+Charting `total_compounded_return` by `hour_of_day` answers Q1 (hour 22 is the
+tallest bar); charting `maximum_drawdown` answers Q2 (hour 10 is closest to zero).
+
+Lightdash reads the connection from this project's `profiles.yml`, which is
+already env-var driven; no separate connection file needed.
+
+To validate the metadata offline with no Lightdash instance:
+
+```bash
+npm install -g @lightdash/cli   # one-time
+make lightdash                  # compiles the four explores from the dbt manifest
+```
+
+`make lightdash` runs `lightdash compile --skip-warehouse-catalog` (uses YAML
+column types, no warehouse round-trip) and should report `SUCCESS=4 ERRORS=0`.
+To build charts live, point Lightdash at this dbt project (`lightdash deploy` or
+`start-preview`). When running against a live warehouse, activate the venv first
+(`source .venv/bin/activate`) so the CLI's bare `dbt` call resolves.
 
 ## Stack
 
