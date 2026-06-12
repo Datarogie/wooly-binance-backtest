@@ -1,11 +1,8 @@
 with hourly_bars as (
-
     select * from {{ ref('int_bitcoin__hourly_bars') }}
-
 ),
 
 carried as (
-
     select
         trade_date,
         hour_of_day,
@@ -16,12 +13,11 @@ carried as (
         lag(bar_close) over (order by hour_start_at) as prior_bar_close,
         lag(last_observed_second_at) over (order by hour_start_at)
             as prior_last_observed_second_at
-    from hourly_bars
 
+    from hourly_bars
 ),
 
 priced as (
-
     select
         trade_date,
         hour_of_day,
@@ -36,12 +32,11 @@ priced as (
                 extract(epoch from (hour_start_at - prior_last_observed_second_at)) as int
             )
         end as carried_price_staleness_seconds
-    from carried
 
+    from carried
 ),
 
 final as (
-
     select
         trade_date,
         hour_of_day,
@@ -56,9 +51,9 @@ final as (
             (exit_price / entry_price)
             * (1 - {{ var('fee_basis_points') }} / 10000.0), 15
         ) - 1 as daily_return
+
     from priced
     where entry_price is not null and entry_price > 0
-
 )
 
 select * from final

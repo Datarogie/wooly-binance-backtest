@@ -2,14 +2,7 @@ version: 2
 
 models:
   - name: fct_bitcoin_hourly_bars
-    description: >
-      Hourly OHLCV bars for BTCUSDT, resampled from the one-second staging bars
-      over each clock hour (open = first, high = max, low = min, close = last,
-      volume = sum). The reusable general-layer product: any hourly Bitcoin
-      question reads this instead of touching raw data. Audit columns expose how
-      well each hour is covered so a thin bar can be judged before it is trusted.
-      The one heavy collapse in the project (110M seconds to days x 24 hours);
-      materialized as a table because everything downstream is tiny.
+    description: Hourly OHLCV bars for BTCUSDT resampled from one-second staging bars; the published surface for any hourly Bitcoin question.
     data_tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns:
@@ -25,52 +18,47 @@ models:
         data_tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0
-              max_value: 23
+              arguments:
+                min_value: 0
+                max_value: 23
       - name: hour_start_at
-        description: >
-          Wall-clock start of the hour (UTC), truncated from the first observed
-          second. The instant the strategy's entry is anchored to.
+        description: Wall-clock start of the hour (UTC), truncated from the first observed second.
         data_tests:
           - not_null
       - name: bar_open
-        description: >
-          Open of the hour: the open price of the earliest second bar in the
-          hour. The strategy's entry price when the hour's first second is
-          present.
+        description: Open price of the hour; the open of the earliest second bar.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
       - name: bar_high
         description: Highest price observed across the hour's second bars.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
       - name: bar_low
         description: Lowest price observed across the hour's second bars.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
       - name: bar_close
-        description: >
-          Close of the hour: the close price of the latest second bar in the
-          hour. The strategy's exit price.
+        description: Close price of the hour; the close of the latest second bar.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
       - name: volume
         description: Total base-asset (BTC) volume traded across the hour.
         data_tests:
           - not_null
       - name: first_observed_second_at
-        description: >
-          Timestamp of the earliest second bar in the hour. When this is later
-          than hour_start_at, the hour opened with a gap and the strategy's entry
-          carries forward instead of using bar_open.
+        description: Timestamp of the earliest second bar; when later than hour_start_at the strategy carries forward the prior close.
         data_tests:
           - not_null
       - name: last_observed_second_at
@@ -78,120 +66,103 @@ models:
         data_tests:
           - not_null
       - name: observed_seconds
-        description: >
-          How many of the hour's 3600 possible seconds actually have a bar. The
-          coverage measure: a low value means a thin, less trustworthy hour. Not
-          a count of trades.
+        description: Count of seconds with a bar in the hour, out of 3600 possible.
         data_tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: "{{ var('hourly_coverage_floor_seconds') }}"
-              max_value: 3600
-              row_condition: "true"
+              arguments:
+                min_value: "{{ var('hourly_coverage_floor_seconds') }}"
+                max_value: 3600
+                row_condition: "true"
               config:
                 severity: warn
       - name: trade_count
-        description: >
-          Total individual executed trades across the hour, summed from the
-          source number_of_trades. Distinct from observed_seconds.
+        description: Total executed trades in the hour, summed from number_of_trades.
         data_tests:
           - not_null
 
   - name: fct_strategy_performance_by_hour
-    description: >
-      One row per hour of day summarizing the reinvested strategy's performance
-      over the full history. The headline metric, total_compounded_return, is
-      read at the last trade date rather than the peak, so an hour that ran up
-      and gave it back is scored where it ended. Conformed and join-free for BI.
-      Answers Q1 (the biggest compounded return) once ranked in the analysis.
+    description: One row per hour of day summarizing the reinvested strategy's compounded return and daily return statistics over the full history.
     columns:
       - name: hour_of_day
-        description: Hour of day (UTC), 0 to 23. The primary key.
+        description: Hour of day (UTC), 0 to 23. Primary key.
         data_tests:
           - unique
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0
-              max_value: 23
+              arguments:
+                min_value: 0
+                max_value: 23
       - name: total_compounded_return
-        description: >
-          Compounded return at the final trade date: the reinvested equity
-          curve's last value minus one. Never the peak ever reached.
+        description: Compounded return at the final trade date; the equity curve's last value minus one.
         data_tests:
           - not_null
       - name: trading_days
-        description: Number of dates this hour traded. A comparability column.
+        description: Number of dates this hour traded.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
       - name: average_daily_return
         description: Mean of the hour's daily returns across all trading days.
         data_tests:
           - not_null
       - name: daily_return_standard_deviation
-        description: >
-          Sample standard deviation of the hour's daily returns, a dispersion
-          measure for judging how steady the compounded return was.
+        description: Sample standard deviation of the hour's daily returns.
         data_tests:
           - not_null
       - name: first_trade_date
-        description: Earliest date this hour traded. A comparability column.
+        description: Earliest date this hour traded.
         data_tests:
           - not_null
       - name: last_trade_date
-        description: >
-          Latest date this hour traded, where the compounded return is read. A
-          comparability column.
+        description: Latest date this hour traded; where the compounded return is read.
         data_tests:
           - not_null
 
   - name: fct_strategy_drawdown_by_hour
-    description: >
-      One row per hour of day exposing the strategy's loss profile so Q2 can be
-      answered under any reading of "maximum losses". Three measures: the maximum
-      drawdown against the running peak, the worst loss below starting capital,
-      and the worst single-day return. Conformed and join-free for BI.
+    description: One row per hour of day exposing the strategy's loss profile; maximum drawdown, worst loss below starting capital, and worst single-day return.
     columns:
       - name: hour_of_day
-        description: Hour of day (UTC), 0 to 23. The primary key.
+        description: Hour of day (UTC), 0 to 23. Primary key.
         data_tests:
           - unique
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0
-              max_value: 23
+              arguments:
+                min_value: 0
+                max_value: 23
       - name: maximum_drawdown
-        description: >
-          Deepest peak-to-trough drop on the reinvested equity curve, measured
-          against the running peak. Zero or negative (a drop is negative).
+        description: Deepest peak-to-trough drop on the reinvested equity curve measured against the running peak. Zero or negative.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "<= 0"
+              arguments:
+                expression: "<= 0"
       - name: maximum_loss_from_start
-        description: >
-          Worst loss below the starting unit of capital, floored at zero so an
-          hour that was never underwater reads as no loss.
+        description: Worst loss below starting capital, floored at zero so an hour never underwater reads as no loss.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: ">= 0"
+              arguments:
+                expression: ">= 0"
       - name: worst_single_day_return
         description: The most negative single-day return this hour ever posted.
         data_tests:
           - not_null
       - name: first_trade_date
-        description: Earliest date this hour traded. A comparability column.
+        description: Earliest date this hour traded.
         data_tests:
           - not_null
       - name: last_trade_date
-        description: Latest date this hour traded. A comparability column.
+        description: Latest date this hour traded.
         data_tests:
           - not_null
       - name: trading_days
-        description: Number of dates this hour traded. A comparability column.
+        description: Number of dates this hour traded.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "> 0"
+              arguments:
+                expression: "> 0"
