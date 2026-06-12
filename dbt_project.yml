@@ -16,13 +16,10 @@ clean-targets:
   - "target"
   - "dbt_packages"
 
-# Round-trip fee applied as a haircut on each day's growth factor. Zero by
-# default so the headline backtest is frictionless; override with
-# `--vars '{fee_basis_points: 10}'` to stress the strategy against costs.
+# frictionless by default; override with --vars '{fee_basis_points: 10}'
 vars:
   fee_basis_points: 0
-  # Documented coverage floor: hours with fewer observed seconds than this are
-  # flagged (WARN) as thin, not failed. Half an hour of data is the trust line.
+  # hours below this threshold are flagged WARN (not failed) as thin coverage
   hourly_coverage_floor_seconds: 1800
 
 models:

@@ -2,17 +2,13 @@ version: 2
 
 sources:
   - name: binance
-    description: >
-      Raw Binance BTCUSDT klines loaded verbatim from the project-root CSV.
-      One row per one-second bar. Loaded once and treated as static.
+    description: Raw Binance BTCUSDT klines loaded verbatim from the project-root CSV. One row per one-second bar.
     schema: raw
     tables:
       - name: bitcoin_prices
         description: >
-          One-second open, high, low, close, and volume (OHLCV) bars for
-          BTCUSDT. Single symbol, no symbol column. `open_time` and `close_time`
-          are real datetime values in this dump, not epoch integers, so staging
-          casts them directly with no division.
+          One-second OHLCV bars for BTCUSDT. `open_time` and `close_time` are
+          datetime values in this dump, not epoch integers.
         columns:
           - name: open_time
             description: Start of the one-second interval (UTC), the bar's stamp.
