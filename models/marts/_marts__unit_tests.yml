@@ -3,7 +3,7 @@ version: 2
 unit_tests:
   - name: performance_reads_last_date_not_peak
     description: total_compounded_return is the equity curve value at the last trade date, not the peak; hour 7 peaks at 0.50 mid-history but ends at 0.20.
-    model: fct_strategy_performance_by_hour
+    model: fct_strategy_by_hour
     given:
       - input: ref('int_bitcoin__strategy_equity_curve')
         format: sql
@@ -19,7 +19,7 @@ unit_tests:
 
   - name: drawdown_drop_recover_new_low
     description: maximum_drawdown uses the running peak (1.20) so partial recovery to 1.10 does not reset it; new low at 0.60 gives max drawdown -0.50.
-    model: fct_strategy_drawdown_by_hour
+    model: fct_strategy_by_hour
     given:
       - input: ref('int_bitcoin__strategy_equity_curve')
         format: sql

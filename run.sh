@@ -11,10 +11,10 @@ export DBT_PROFILES_DIR="$dir"
 db="${POSTGRES_DB:-bitcoin}"
 user="${POSTGRES_USER:-postgres}"
 
-echo "[1/4] starting the database"
+echo "[1/5] starting the database"
 docker compose up -d --wait
 
-echo "[2/4] loading the dataset"
+echo "[2/5] loading the dataset"
 # Skip the multi-minute reload when raw.bitcoin_prices is already populated.
 existing_rows="$(
     docker compose exec -T db psql -tA -U "$user" -d "$db" \
@@ -26,9 +26,12 @@ else
     bash scripts/load_data.sh
 fi
 
-echo "[3/4] building and testing the dbt project"
+echo "[3/5] building and testing the dbt project"
 uv run dbt deps
 uv run dbt build
 
-echo "[4/4] answering the questions"
+echo "[4/5] answering the questions"
 bash scripts/print_answers.sh
+
+echo "[5/5] writing the answer charts to docs/screenshots"
+uv run python scripts/make_charts.py || echo "skipped charts (matplotlib missing? run 'uv sync')"

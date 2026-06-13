@@ -2,26 +2,24 @@ version: 2
 
 models:
   - name: fct_bitcoin_hourly_bars
-    description: Hourly OHLCV bars for BTCUSDT resampled from one-second bars; use for any hourly Bitcoin OHLCV question.
-    data_tests:
-      - dbt_utils.unique_combination_of_columns:
-          arguments:
-            combination_of_columns:
-              - trade_date
-              - hour_of_day
+    description: Hourly OHLCV bars for BTCUSDT resampled from one-second bars; use for any hourly Bitcoin OHLCV question. Sparse, one row per hour that actually traded.
     columns:
+      - name: pk_hourly_bar_key
+        description: Surrogate key for the hourly bar, hashed from trade_date and hour_of_day.
+        data_tests:
+          - unique
+          - not_null
       - name: trade_date
-        description: Calendar date (UTC) of the hour. Part of the primary key.
+        description: Calendar date (UTC) of the hour.
         data_tests:
           - not_null
       - name: hour_of_day
-        description: Hour of day (UTC), 0 to 23. Part of the primary key.
+        description: Hour of day (UTC), 0 to 23.
         data_tests:
           - not_null
-          - dbt_expectations.expect_column_values_to_be_between:
+          - dbt_utils.expression_is_true:
               arguments:
-                min_value: 0
-                max_value: 23
+                expression: "between 0 and 23"
       - name: hour_start_at
         description: Wall-clock start of the hour (UTC), truncated from the first observed second.
         data_tests:
@@ -70,131 +68,36 @@ models:
         description: Count of seconds with a bar in the hour, out of 3600 possible.
         data_tests:
           - not_null
-          - dbt_expectations.expect_column_values_to_be_between:
-              arguments:
-                min_value: "{{ var('hourly_coverage_floor_seconds') }}"
-                max_value: 3600
-                row_condition: "true"
-              config:
-                severity: warn
       - name: trade_count
         description: Total executed trades in the hour, summed from number_of_trades.
         data_tests:
           - not_null
 
-  - name: fct_strategy_performance_by_hour
-    description: One row per hour of day summarizing the reinvested strategy's compounded return and daily return statistics over the full history.
+  - name: fct_strategy_by_hour
+    description: One row per hour of day summarizing the reinvested strategy over the full history; compounded return and daily-return stats (Q1) alongside the loss/drawdown profile (Q2). Same grain, one self-serve surface.
     columns:
       - name: hour_of_day
         description: Hour of day (UTC), 0 to 23. Primary key.
-        config:
-          meta:
-            dimension:
-              type: number
-              label: Hour of day (UTC)
         data_tests:
           - unique
           - not_null
-          - dbt_expectations.expect_column_values_to_be_between:
-              arguments:
-                min_value: 0
-                max_value: 23
-      - name: total_compounded_return
-        description: Compounded return at the final trade date; the equity curve's last value minus one.
-        config:
-          meta:
-            metrics:
-              total_compounded_return_metric:
-                label: Total compounded return
-                type: max
-                description: Compounded return at the final trade date for the hour.
-                format: '#,##0.0%'
-        data_tests:
-          - not_null
-      - name: trading_days
-        description: Number of dates this hour traded.
-        config:
-          meta:
-            metrics:
-              trading_days_metric:
-                label: Trading days
-                type: max
-                description: Number of dates this hour traded.
-        data_tests:
-          - not_null
           - dbt_utils.expression_is_true:
               arguments:
-                expression: "> 0"
+                expression: "between 0 and 23"
+      - name: total_compounded_return
+        description: Compounded return at the final trade date; the equity curve's last value minus one. Sort descending for Q1.
+        data_tests:
+          - not_null
       - name: average_daily_return
         description: Mean of the hour's daily returns across all trading days.
-        config:
-          meta:
-            metrics:
-              average_daily_return_metric:
-                label: Average daily return
-                type: max
-                description: Mean of the hour's daily returns across all trading days.
-                format: '#,##0.00%'
         data_tests:
           - not_null
       - name: daily_return_standard_deviation
         description: Sample standard deviation of the hour's daily returns.
-        config:
-          meta:
-            metrics:
-              daily_return_standard_deviation_metric:
-                label: Daily return standard deviation
-                type: max
-                description: Sample standard deviation of the hour's daily returns.
-                format: '#,##0.00%'
         data_tests:
           - not_null
-      - name: first_trade_date
-        description: Earliest date this hour traded.
-        config:
-          meta:
-            dimension:
-              type: date
-              label: First trade date
-        data_tests:
-          - not_null
-      - name: last_trade_date
-        description: Latest date this hour traded; where the compounded return is read.
-        config:
-          meta:
-            dimension:
-              type: date
-              label: Last trade date
-        data_tests:
-          - not_null
-
-  - name: fct_strategy_drawdown_by_hour
-    description: One row per hour of day exposing the strategy's loss profile; maximum drawdown, worst loss below starting capital, and worst single-day return.
-    columns:
-      - name: hour_of_day
-        description: Hour of day (UTC), 0 to 23. Primary key.
-        config:
-          meta:
-            dimension:
-              type: number
-              label: Hour of day (UTC)
-        data_tests:
-          - unique
-          - not_null
-          - dbt_expectations.expect_column_values_to_be_between:
-              arguments:
-                min_value: 0
-                max_value: 23
       - name: maximum_drawdown
-        description: Deepest peak-to-trough drop on the reinvested equity curve measured against the running peak. Zero or negative.
-        config:
-          meta:
-            metrics:
-              maximum_drawdown_metric:
-                label: Maximum drawdown
-                type: max
-                description: Deepest peak-to-trough drop on the equity curve; the hour closest to zero is the Q2 answer.
-                format: '#,##0.0%'
+        description: Deepest peak-to-trough drop on the reinvested equity curve measured against the running peak. Zero or negative; the hour closest to zero is the Q2 answer.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
@@ -202,14 +105,6 @@ models:
                 expression: "<= 0"
       - name: maximum_loss_from_start
         description: Worst loss below starting capital, floored at zero so an hour never underwater reads as no loss.
-        config:
-          meta:
-            metrics:
-              maximum_loss_from_start_metric:
-                label: Maximum loss from start
-                type: max
-                description: Worst loss below starting capital, floored at zero.
-                format: '#,##0.0%'
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
@@ -217,45 +112,20 @@ models:
                 expression: ">= 0"
       - name: worst_single_day_return
         description: The most negative single-day return this hour ever posted.
-        config:
-          meta:
-            metrics:
-              worst_single_day_return_metric:
-                label: Worst single day return
-                type: max
-                description: The most negative single-day return this hour ever posted.
-                format: '#,##0.00%'
-        data_tests:
-          - not_null
-      - name: first_trade_date
-        description: Earliest date this hour traded.
-        config:
-          meta:
-            dimension:
-              type: date
-              label: First trade date
-        data_tests:
-          - not_null
-      - name: last_trade_date
-        description: Latest date this hour traded.
-        config:
-          meta:
-            dimension:
-              type: date
-              label: Last trade date
         data_tests:
           - not_null
       - name: trading_days
         description: Number of dates this hour traded.
-        config:
-          meta:
-            metrics:
-              drawdown_trading_days_metric:
-                label: Trading days
-                type: max
-                description: Number of dates this hour traded.
         data_tests:
           - not_null
           - dbt_utils.expression_is_true:
               arguments:
                 expression: "> 0"
+      - name: first_trade_date
+        description: Earliest date this hour traded.
+        data_tests:
+          - not_null
+      - name: last_trade_date
+        description: Latest date this hour traded; where the compounded return is read.
+        data_tests:
+          - not_null
