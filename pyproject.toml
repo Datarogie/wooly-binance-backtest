@@ -5,6 +5,7 @@ description = "Bitcoin hourly trading strategy backtester, built as a dbt projec
 requires-python = ">=3.10,<3.13"
 dependencies = [
     "dbt-postgres==1.10.0",
+    "matplotlib>=3.10.9",
     "sqlfluff>=3.2,<4",
     "sqlfluff-templater-dbt>=3.2,<4",
 ]

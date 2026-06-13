@@ -4,6 +4,7 @@ with hourly_bars as (
 
 carried as (
     select
+        pk_hourly_bar_key,
         trade_date,
         hour_of_day,
         hour_start_at,
@@ -19,6 +20,7 @@ carried as (
 
 priced as (
     select
+        pk_hourly_bar_key,
         trade_date,
         hour_of_day,
         bar_close as exit_price,
@@ -28,16 +30,15 @@ priced as (
         end as entry_price,
         case
             when first_observed_second_at = hour_start_at then 0
-            else cast(
-                extract(epoch from (hour_start_at - prior_last_observed_second_at)) as int
-            )
+            else extract(epoch from (hour_start_at - prior_last_observed_second_at))::int
         end as carried_price_staleness_seconds
 
     from carried
 ),
 
-final as (
+returns as (
     select
+        pk_hourly_bar_key,
         trade_date,
         hour_of_day,
         entry_price,
@@ -46,14 +47,24 @@ final as (
         round(
             (exit_price / entry_price)
             * (1 - {{ var('fee_basis_points') }} / 10000.0), 15
-        ) as growth_factor,
-        round(
-            (exit_price / entry_price)
-            * (1 - {{ var('fee_basis_points') }} / 10000.0), 15
-        ) - 1 as daily_return
+        ) as growth_factor
 
     from priced
     where entry_price is not null and entry_price > 0
+),
+
+final as (
+    select
+        pk_hourly_bar_key,
+        trade_date,
+        hour_of_day,
+        entry_price,
+        exit_price,
+        carried_price_staleness_seconds,
+        growth_factor,
+        growth_factor - 1 as daily_return
+
+    from returns
 )
 
 select * from final

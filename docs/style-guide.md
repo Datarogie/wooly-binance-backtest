@@ -77,7 +77,7 @@ output or down from a layer above.
   so it carries `not_null` checks but no uniqueness. Ephemeral models carry their
   contracts one layer down, on the tables that read them, since generic tests
   cannot run against a relation that never materializes.
-- Value-range and relationship tests use `dbt_utils` and `dbt_expectations`.
+- Value-range and relationship tests use `dbt_utils`.
 - Unit tests are written for every model that holds business logic, before the
   logic is added, asserting output for a fixture input. They cover boundary
   bucketing, the resample, growth-factor and fee math, carry-forward, compounding,

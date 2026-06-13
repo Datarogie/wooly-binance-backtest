@@ -1,9 +1,5 @@
-with performance as (
-    select * from {{ ref('fct_strategy_performance_by_hour') }}
-),
-
-drawdown as (
-    select * from {{ ref('fct_strategy_drawdown_by_hour') }}
+with strategy as (
+    select * from {{ ref('fct_strategy_by_hour') }}
 ),
 
 best_return as (
@@ -15,7 +11,7 @@ best_return as (
         first_trade_date,
         last_trade_date
 
-    from performance
+    from strategy
     order by total_compounded_return desc
     limit 1
 ),
@@ -29,7 +25,7 @@ lowest_max_loss as (
         first_trade_date,
         last_trade_date
 
-    from drawdown
+    from strategy
     order by maximum_drawdown desc
     limit 1
 ),

@@ -2,8 +2,13 @@ version: 2
 
 models:
   - name: int_bitcoin__hourly_bars
-    description: One-second bars deduped and resampled to hourly OHLCV. Materialized as table; the one heavy query, read by both the hourly bars mart and strategy models.
+    description: One-second bars resampled to one row per traded clock hour (OHLCV). The single heavy collapse, materialized as a table. Sparse, one row per hour that actually traded.
     columns:
+      - name: pk_hourly_bar_key
+        description: Surrogate key for the hourly bar, hashed from trade_date and hour_of_day.
+        data_tests:
+          - unique
+          - not_null
       - name: trade_date
         description: Calendar date (UTC) of the hour.
       - name: hour_of_day
@@ -32,6 +37,11 @@ models:
   - name: int_bitcoin__strategy_daily_trades
     description: One simulated trade per (date, hour); entry at bar open or carried prior close, exit at bar close, growth factor net of fee.
     columns:
+      - name: pk_hourly_bar_key
+        description: Surrogate key carried from the hourly bar (one trade per bar, so it stays unique here).
+        data_tests:
+          - unique
+          - not_null
       - name: trade_date
         description: Trade date (UTC).
       - name: hour_of_day
@@ -50,6 +60,11 @@ models:
   - name: int_bitcoin__strategy_equity_curve
     description: Running compounded equity curve per hour of day; exp(sum(ln(growth_factor))) across trade dates.
     columns:
+      - name: pk_hourly_bar_key
+        description: Surrogate key carried from the hourly bar (one equity point per bar, so it stays unique here).
+        data_tests:
+          - unique
+          - not_null
       - name: trade_date
         description: Trade date (UTC).
       - name: hour_of_day

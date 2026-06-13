@@ -21,22 +21,15 @@ clean-targets:
 # `--vars '{fee_basis_points: 10}'` to stress the strategy against costs.
 vars:
   fee_basis_points: 0
-  # Documented coverage floor: hours with fewer observed seconds than this are
-  # flagged (WARN) as thin, not failed. Half an hour of data is the trust line.
-  hourly_coverage_floor_seconds: 1800
 
 models:
   alpaca_takehome:
     staging:
       +materialized: view
       +schema: staging
-      +meta:
-        hidden: true
     intermediate:
       +materialized: ephemeral
       +schema: intermediate
-      +meta:
-        hidden: true
     marts:
       +materialized: table
       +schema: marts

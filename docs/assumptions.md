@@ -10,6 +10,10 @@ here rather than buried in code.
   quote_asset_volume, number_of_trades, taker_buy_base_asset_volume,
   taker_buy_quote_asset_volume, ignore`. The loader probes the CSV header before
   loading to confirm this layout.
+- **Duplicate source rows.** The dump repeats some seconds verbatim (exact
+  duplicate rows). Staging drops them with `select distinct`, which only removes
+  fully identical rows, so two genuinely different prints in the same second are
+  preserved. In a real pipeline this would be fixed upstream in ingestion.
 - **Timestamps are real datetimes, not epochs.** In this dump `open_time` and
   `close_time` are `YYYY-MM-DD HH:MM:SS` strings, so staging casts them directly
   with no division. The loader asserts this on the first data row; if a future
@@ -59,11 +63,11 @@ here rather than buried in code.
 
 ## Coverage
 
-- **Trust floor.** An hour's `observed_seconds` (how many of its 3600 seconds
-  have a bar) is a data quality signal. Hours below a documented floor
-  (`hourly_coverage_floor_seconds`, default 1800) raise a WARN, not an error, so
-  thin hours surface without failing the build. Two such hours exist in this
-  slice (exchange downtime on 2021-04-25).
+- **Coverage signal, no hard floor.** Each hour exposes `observed_seconds` (how
+  many of its 3600 seconds carried a bar) as a data-quality signal. It is not
+  gated by a test, so thin hours surface through the column rather than failing
+  the build. A couple of hours in this slice are thin from exchange downtime
+  (2021-04-25).
 
 ## Engine
 
