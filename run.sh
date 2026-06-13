@@ -11,6 +11,22 @@ export DBT_PROFILES_DIR="$dir"
 db="${POSTGRES_DB:-bitcoin}"
 user="${POSTGRES_USER:-postgres}"
 
+# Preflight: uv is auto-installed if missing (user-space, no sudo). Docker can't be
+# safely auto-installed (needs root, a daemon, OS-specific), so we check and instruct.
+if ! command -v uv >/dev/null 2>&1; then
+    echo "uv not found, installing (user-space, no sudo)..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    export PATH="$HOME/.local/bin:$PATH"
+fi
+if ! command -v docker >/dev/null 2>&1; then
+    echo "error: Docker is required. Install it (https://docs.docker.com/get-docker/) and re-run." >&2
+    exit 1
+fi
+if ! docker info >/dev/null 2>&1; then
+    echo "error: Docker is installed but its daemon isn't running. Start Docker and re-run." >&2
+    exit 1
+fi
+
 echo "[1/5] starting the database"
 docker compose up -d --wait
 
