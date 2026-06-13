@@ -56,16 +56,20 @@ by_hour as (
 
     from with_drawdown
     group by hour_of_day
+),
+
+final as (
+    select
+        hour_of_day,
+        round(total_compounded_return::numeric, 4) as total_compounded_return,  -- Q1: sort desc
+        round(maximum_drawdown::numeric, 4) as maximum_drawdown,                -- Q2: closest to zero
+        round(worst_single_day_return::numeric, 4) as worst_single_day_return,
+        trading_days,
+        first_trade_date,
+        last_trade_date
+
+    from by_hour
+    order by total_compounded_return desc
 )
 
-select
-    hour_of_day,
-    round(total_compounded_return::numeric, 4) as total_compounded_return,  -- Q1: sort desc
-    round(maximum_drawdown::numeric, 4) as maximum_drawdown,                -- Q2: closest to zero
-    round(worst_single_day_return::numeric, 4) as worst_single_day_return,
-    trading_days,
-    first_trade_date,
-    last_trade_date
-
-from by_hour
-order by total_compounded_return desc
+select * from final
