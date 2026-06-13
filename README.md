@@ -20,8 +20,9 @@ and which had the lowest maximum losses.
 
 ## Prerequisites
 
-- **Docker** for the database ([Docker Desktop](https://docs.docker.com/get-docker/) on macOS/Windows; [Docker Engine](https://docs.docker.com/engine/install/) on Linux). `run.sh` checks it is installed and running.
-- **uv** for Python and dbt ([install guide](https://docs.astral.sh/uv/getting-started/installation/)). `run.sh` auto-installs it if missing. It reads the committed lockfile, so there is no separate dbt or Python setup.
+**Docker** is the only thing to set up: install it ([Docker Desktop](https://docs.docker.com/get-docker/) on macOS/Windows; [Docker Engine](https://docs.docker.com/engine/install/) on Linux) and make sure it is running. `run.sh` checks for it.
+
+Everything else is handled: `run.sh` auto-installs [uv](https://docs.astral.sh/uv/) if missing, and uv reads the committed lockfile to provision Python and dbt. No separate Python or dbt setup.
 
 ## Quick start
 
