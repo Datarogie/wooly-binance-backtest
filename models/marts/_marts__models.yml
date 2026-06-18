@@ -57,11 +57,19 @@ models:
         data_tests:
           - not_null
       - name: first_observed_second_at
-        description: Timestamp of the earliest second bar; when later than hour_start_at the strategy carries forward the prior close.
+        description: Timestamp of the earliest second bar in the hour.
         data_tests:
           - not_null
       - name: last_observed_second_at
         description: Timestamp of the latest second bar in the hour.
+        data_tests:
+          - not_null
+      - name: has_open_boundary
+        description: True when a real bar exists exactly at the hour start (HH:00:00). The strategy trades an hour only when this is true.
+        data_tests:
+          - not_null
+      - name: has_close_boundary
+        description: True when a real bar exists at the hour's last second (HH:59:59). The strategy trades an hour only when this is true.
         data_tests:
           - not_null
       - name: observed_seconds

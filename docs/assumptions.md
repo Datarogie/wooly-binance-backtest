@@ -30,10 +30,15 @@ here rather than buried in code.
 ## Typing
 
 - **Prices are `numeric`, never float.** Compounding across thousands of days
-  accumulates floating-point error; `numeric` keeps it exact. The log-space
-  cumulative product (`exp(sum(ln(growth_factor)))`) also stays high-precision in
-  Postgres `numeric`. Cumulative and growth values are rounded to 15 decimals to
-  drop sub-1e-15 residue; results are deterministic.
+  accumulates floating-point error; `numeric` keeps it exact. Staging casts are
+  explicit and bounded: prices `numeric(18,8)`, volume `numeric(28,8)`. Scale 8
+  matches Binance asset precision, so no source decimals are dropped (a singular
+  test using `scale()` fails the build if a source value carries more). Raw stays
+  permissive; typing happens at staging.
+- **Reported values round to 4 decimals.** Per guidance that 4 dp is enough,
+  growth factors, the compounded curve, returns, and drawdowns all round to 4 dp.
+  Rounding the daily growth factor quantizes daily returns to ~1 bp; that is a
+  deliberate readability tradeoff over carrying more precision into the compound.
 
 ## Strategy
 
@@ -41,12 +46,13 @@ here rather than buried in code.
   first trade at `HH:00:00`); sell is the close of the hour's last second bar
   (the last trade before `HH+1:00:00`). Matches buying at `:00:00` and selling
   at `:59:59` exactly.
-- **Carry-forward.** When the hour's first second has no bar, the entry carries
-  forward the prior hourly bar's close via a lag over hourly bars ordered by
-  time; multi-hour gaps are handled automatically.
-  Staleness is flagged in `carried_price_staleness_seconds`. An hour with no data
-  at all is a no-trade day, not carried forward. Crypto trades 24/7, so any gap
-  is missing data or exchange downtime, not a market session boundary.
+- **Boundary completeness.** The strategy trades an hour only when a real bar
+  exists at both boundary seconds: the entry at `HH:00:00` and the exit at
+  `HH:59:59`. Hours missing either are dropped, never back-filled: a price at
+  `:50` does not imply the price at `:59`, so carrying it forward would invent an
+  entry or exit that never traded. The flags `has_open_boundary` and
+  `has_close_boundary` on the hourly bars drive the filter; the OHLCV bars fact
+  keeps every hour so general queries still see them.
 - **Reinvestment and compounding.** All proceeds are reinvested into the next
   day's buy, so daily growth factors multiply. "Biggest returns" is the
   geometric (compounded) return, read at the **last** trade date, never the peak
@@ -69,6 +75,18 @@ here rather than buried in code.
   the build. A couple of hours in this slice are thin from exchange downtime
   (2021-04-25).
 
+## Source trust
+
+- **Validate the source, flag don't block.** Singular tests reconcile the raw feed
+  against itself: taker volume within total, implied VWAP inside the bar's
+  `[low, high]`, `close_time` after `open_time`. These run at warn severity, so a
+  suspect row surfaces as a flag rather than failing the build on data we do not
+  own. Staging invariants we do control (OHLC ordering, prices `> 0`, surrogate
+  uniqueness) and the `scale()` no-truncation guard stay at error severity.
+- **Outlier surfacing.** `number_of_trades` carries a warn-level upper bound, so a
+  second reporting an implausible trade count (the classic "a million trades"
+  row) flags without blocking.
+
 ## Engine
 
 - **Postgres in Docker.** The assignment names Postgres or MySQL explicitly.
@@ -77,3 +95,13 @@ here rather than buried in code.
   noted only as an unconstrained alternative.
 - **dbt Core 1.x, pinned.** `dbt-postgres==1.10.0` (brings dbt-core 1.11.x), not
   dbt Fusion / Core 2.0, whose Postgres adapter is not yet supported.
+
+## Orchestration
+
+- **Shell for glue, SQL for transforms, Python for the chart.** `run.sh` and the
+  `scripts/` helpers only chain CLIs: `docker compose`, `psql`, `dbt`. The one
+  data step is streaming the multi-GB CSV into Postgres via `psql \copy`, a single
+  streamed COPY that is faster and lower-memory than a row-by-row Python loader.
+  All transformation lives in dbt SQL where it is tested and documented; Python is
+  used where it fits, for the answer charts (`make_charts.py`). The split is by
+  job, not by preference.

@@ -3,8 +3,6 @@ with source as (
 ),
 
 deduplicated as (
-    -- source ships exact duplicate rows (same second repeated); drop the copies.
-    -- distinct keeps any second carrying genuinely different prints.
     select distinct
         open_time,
         open,
@@ -21,11 +19,11 @@ final as (
     select
         {{ dbt_utils.generate_surrogate_key(['open_time']) }} as pk_bitcoin_price_key,
         open_time as event_at,
-        open::numeric as open,
-        high::numeric as high,
-        low::numeric as low,
-        close::numeric as close,
-        volume::numeric as volume,
+        open::numeric(18, 8) as open,
+        high::numeric(18, 8) as high,
+        low::numeric(18, 8) as low,
+        close::numeric(18, 8) as close,
+        volume::numeric(28, 8) as volume,
         number_of_trades
 
     from deduplicated

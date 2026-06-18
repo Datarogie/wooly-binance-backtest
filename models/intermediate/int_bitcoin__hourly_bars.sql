@@ -19,7 +19,7 @@ calendar as (
     from seconds
 ),
 
-final as (
+aggregated as (
     select
         {{ dbt_utils.generate_surrogate_key(['trade_date', 'hour_of_day']) }} as pk_hourly_bar_key,
         trade_date,
@@ -37,6 +37,16 @@ final as (
 
     from calendar
     group by trade_date, hour_of_day
+),
+
+final as (
+    select
+        aggregated.*,
+        first_observed_second_at = hour_start_at as has_open_boundary,
+        last_observed_second_at = hour_start_at + interval '59 minutes 59 seconds'
+            as has_close_boundary
+
+    from aggregated
 )
 
 select * from final

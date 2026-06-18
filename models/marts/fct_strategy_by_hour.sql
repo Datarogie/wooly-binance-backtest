@@ -5,7 +5,7 @@ with equity_curve as (
 last_day as (
     select distinct on (hour_of_day)
         hour_of_day,
-        cumulative_return as total_compounded_return
+        round(cumulative_return, {{ var('report_decimals') }}) as total_compounded_return
 
     from equity_curve
     order by hour_of_day asc, trade_date desc
@@ -33,7 +33,7 @@ with_drawdown as (
         trade_date,
         daily_return,
         cumulative_return,
-        round(cumulative_growth_factor / running_peak - 1, 15) as drawdown
+        round(cumulative_growth_factor / running_peak - 1, {{ var('report_decimals') }}) as drawdown
 
     from with_running_peak
 ),
@@ -42,11 +42,11 @@ per_hour as (
     select
         hour_of_day,
         count(*)::int as trading_days,
-        avg(daily_return) as average_daily_return,
-        stddev_samp(daily_return) as daily_return_standard_deviation,
+        round(avg(daily_return), {{ var('report_decimals') }}) as average_daily_return,
+        round(stddev_samp(daily_return), {{ var('report_decimals') }}) as daily_return_standard_deviation,
         min(drawdown) as maximum_drawdown,
-        greatest(0, -min(cumulative_return)) as maximum_loss_from_start,
-        min(daily_return) as worst_single_day_return,
+        round(greatest(0, -min(cumulative_return)), {{ var('report_decimals') }}) as maximum_loss_from_start,
+        round(min(daily_return), {{ var('report_decimals') }}) as worst_single_day_return,
         min(trade_date) as first_trade_date,
         max(trade_date) as last_trade_date
 

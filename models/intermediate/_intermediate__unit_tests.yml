@@ -2,7 +2,7 @@ version: 2
 
 unit_tests:
   - name: hourly_bars_resamples_ohlcv
-    description: OHLCV resamples correctly from out-of-order second bars; open is the earliest second, close the latest, high/low/volume/trades aggregated.
+    description: OHLCV resamples correctly from out-of-order second bars; open is the earliest second, close the latest, high/low/volume/trades aggregated. Boundary flags reflect the observed first/last seconds.
     model: int_bitcoin__hourly_bars
     given:
       - input: ref('stg_binance__bitcoin_prices')
@@ -13,10 +13,10 @@ unit_tests:
           - {event_at: "2021-05-01 10:00:02", open: 130, high: 200, low: 110, close: 240, volume: 3, number_of_trades: 1}
     expect:
       rows:
-        - {pk_hourly_bar_key: "e8e6d012c123ab9dbe1463ba2bc66db5", trade_date: "2021-05-01", hour_of_day: 10, hour_start_at: "2021-05-01 10:00:00", bar_open: 100, bar_high: 300, bar_low: 80, bar_close: 250, volume: 10, first_observed_second_at: "2021-05-01 10:00:00", last_observed_second_at: "2021-05-01 10:00:03", observed_seconds: 4, trade_count: 11}
+        - {pk_hourly_bar_key: "e8e6d012c123ab9dbe1463ba2bc66db5", trade_date: "2021-05-01", hour_of_day: 10, hour_start_at: "2021-05-01 10:00:00", bar_open: "100.00000000", bar_high: "300.00000000", bar_low: "80.00000000", bar_close: "250.00000000", volume: "10.00000000", first_observed_second_at: "2021-05-01 10:00:00", last_observed_second_at: "2021-05-01 10:00:03", has_open_boundary: true, has_close_boundary: false, observed_seconds: 4, trade_count: 11}
 
   - name: daily_trades_growth_factor_and_fee
-    description: Entry 100, exit 110, 1% fee gives growth_factor 1.089 and daily_return 0.089.
+    description: Entry 100, exit 110, 1% fee gives growth_factor 1.0890 and daily_return 0.0890 at 4 dp.
     model: int_bitcoin__strategy_daily_trades
     overrides:
       vars:
@@ -24,26 +24,25 @@ unit_tests:
     given:
       - input: ref('int_bitcoin__hourly_bars')
         rows:
-          - {pk_hourly_bar_key: "bar-0601-09", trade_date: "2021-06-01", hour_of_day: 9, hour_start_at: "2021-06-01 09:00:00", first_observed_second_at: "2021-06-01 09:00:00", last_observed_second_at: "2021-06-01 09:59:59", bar_open: 100, bar_close: 110}
+          - {pk_hourly_bar_key: "bar-0601-09", trade_date: "2021-06-01", hour_of_day: 9, bar_open: 100, bar_close: 110, has_open_boundary: true, has_close_boundary: true}
     expect:
       rows:
-        - {pk_hourly_bar_key: "bar-0601-09", trade_date: "2021-06-01", hour_of_day: 9, entry_price: 100, exit_price: 110, carried_price_staleness_seconds: 0, growth_factor: "1.089000000000000", daily_return: "0.089000000000000"}
+        - {pk_hourly_bar_key: "bar-0601-09", trade_date: "2021-06-01", hour_of_day: 9, entry_price: 100, exit_price: 110, growth_factor: "1.0890", daily_return: "0.0890"}
 
-  - name: daily_trades_carry_forward_across_gap
-    description: Late-opening bar uses prior close (not its own open); missing hour skipped via lag; staleness correct.
+  - name: daily_trades_drops_incomplete_boundary
+    description: Hours missing a real bar at either boundary second are dropped, not carried forward; only the fully bounded hour produces a trade.
     model: int_bitcoin__strategy_daily_trades
     given:
       - input: ref('int_bitcoin__hourly_bars')
         rows:
-          - {pk_hourly_bar_key: "bar-0701-00", trade_date: "2021-07-01", hour_of_day: 0, hour_start_at: "2021-07-01 00:00:00", first_observed_second_at: "2021-07-01 00:00:00", last_observed_second_at: "2021-07-01 00:59:59", bar_open: 180, bar_close: 200}
-          - {pk_hourly_bar_key: "bar-0701-02", trade_date: "2021-07-01", hour_of_day: 2, hour_start_at: "2021-07-01 02:00:00", first_observed_second_at: "2021-07-01 02:00:30", last_observed_second_at: "2021-07-01 02:59:59", bar_open: 999, bar_close: 220}
+          - {pk_hourly_bar_key: "bar-0701-00", trade_date: "2021-07-01", hour_of_day: 0, bar_open: 180, bar_close: 200, has_open_boundary: true, has_close_boundary: true}
+          - {pk_hourly_bar_key: "bar-0701-02", trade_date: "2021-07-01", hour_of_day: 2, bar_open: 999, bar_close: 220, has_open_boundary: false, has_close_boundary: true}
     expect:
       rows:
-        - {pk_hourly_bar_key: "bar-0701-00", trade_date: "2021-07-01", hour_of_day: 0, entry_price: 180, exit_price: 200, carried_price_staleness_seconds: 0, growth_factor: "1.111111111111111", daily_return: "0.111111111111111"}
-        - {pk_hourly_bar_key: "bar-0701-02", trade_date: "2021-07-01", hour_of_day: 2, entry_price: 200, exit_price: 220, carried_price_staleness_seconds: 3601, growth_factor: "1.100000000000000", daily_return: "0.100000000000000"}
+        - {pk_hourly_bar_key: "bar-0701-00", trade_date: "2021-07-01", hour_of_day: 0, entry_price: 180, exit_price: 200, growth_factor: "1.1111", daily_return: "0.1111"}
 
   - name: equity_curve_compounds_to_hand_computed
-    description: Growth factors 1.10, 0.50, 2.00 compound to running products 1.10, 0.55, 1.10.
+    description: Growth factors 1.10, 0.50, 2.00 compound to running products 1.10, 0.55, 1.10 at 4 dp.
     model: int_bitcoin__strategy_equity_curve
     given:
       - input: ref('int_bitcoin__strategy_daily_trades')
@@ -56,6 +55,6 @@ unit_tests:
           select 'k3' as pk_hourly_bar_key, cast('2021-08-03' as date) as trade_date, 12 as hour_of_day, cast(2.00 as numeric) as growth_factor, cast(1.00 as numeric) as daily_return
     expect:
       rows:
-        - {pk_hourly_bar_key: "k1", trade_date: "2021-08-01", hour_of_day: 12, cumulative_growth_factor: "1.100000000000000", cumulative_return: "0.100000000000000"}
-        - {pk_hourly_bar_key: "k2", trade_date: "2021-08-02", hour_of_day: 12, cumulative_growth_factor: "0.550000000000000", cumulative_return: "-0.450000000000000"}
-        - {pk_hourly_bar_key: "k3", trade_date: "2021-08-03", hour_of_day: 12, cumulative_growth_factor: "1.100000000000000", cumulative_return: "0.100000000000000"}
+        - {pk_hourly_bar_key: "k1", trade_date: "2021-08-01", hour_of_day: 12, cumulative_growth_factor: "1.1000", cumulative_return: "0.1000"}
+        - {pk_hourly_bar_key: "k2", trade_date: "2021-08-02", hour_of_day: 12, cumulative_growth_factor: "0.5500", cumulative_return: "-0.4500"}
+        - {pk_hourly_bar_key: "k3", trade_date: "2021-08-03", hour_of_day: 12, cumulative_growth_factor: "1.1000", cumulative_return: "0.1000"}

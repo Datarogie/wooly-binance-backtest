@@ -29,13 +29,17 @@ models:
         description: Timestamp of the earliest second bar in the hour.
       - name: last_observed_second_at
         description: Timestamp of the latest second bar in the hour.
+      - name: has_open_boundary
+        description: True when a real bar exists exactly at the hour start (HH:00:00), so entry needs no carried price.
+      - name: has_close_boundary
+        description: True when a real bar exists at the last second of the hour (HH:59:59), so exit is a real observed price.
       - name: observed_seconds
         description: Count of seconds with a bar in the hour (coverage).
       - name: trade_count
         description: Total executed trades across the hour.
 
   - name: int_bitcoin__strategy_daily_trades
-    description: One simulated trade per (date, hour); entry at bar open or carried prior close, exit at bar close, growth factor net of fee.
+    description: One simulated trade per (date, hour), restricted to hours with a real bar at both boundary seconds; entry at bar open, exit at bar close, growth factor net of fee.
     columns:
       - name: pk_hourly_bar_key
         description: Surrogate key carried from the hourly bar (one trade per bar, so it stays unique here).
@@ -47,11 +51,9 @@ models:
       - name: hour_of_day
         description: Hour of day (UTC), 0 to 23.
       - name: entry_price
-        description: Bar open when the hour's first second is on the boundary, else the prior bar's close carried forward.
+        description: Bar open at the hour's first second (HH:00:00); a real observed price, never carried forward.
       - name: exit_price
-        description: Bar close of the hour.
-      - name: carried_price_staleness_seconds
-        description: Seconds from the carried price's source to the hour start. Zero when bar open was used.
+        description: Bar close at the hour's last second (HH:59:59).
       - name: growth_factor
         description: exit_price / entry_price after the round-trip fee haircut.
       - name: daily_return
