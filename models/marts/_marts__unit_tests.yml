@@ -15,7 +15,7 @@ unit_tests:
           select cast('2022-01-03' as date) as trade_date, 7 as hour_of_day, cast(0.80 as numeric) as growth_factor, cast(-0.20 as numeric) as daily_return, cast(1.20 as numeric) as cumulative_growth_factor, cast(0.20 as numeric) as cumulative_return
     expect:
       rows:
-        - {hour_of_day: 7, total_compounded_return: "0.20", trading_days: 3, first_trade_date: "2022-01-01", last_trade_date: "2022-01-03"}
+        - {hour_of_day: 7, total_compounded_return: "0.2000", trading_days: 3, first_trade_date: "2022-01-01", last_trade_date: "2022-01-03"}
 
   - name: drawdown_drop_recover_new_low
     description: maximum_drawdown uses the running peak (1.20) so partial recovery to 1.10 does not reset it; new low at 0.60 gives max drawdown -0.50.
@@ -33,4 +33,4 @@ unit_tests:
           select cast('2022-02-04' as date) as trade_date, 3 as hour_of_day, cast(0.5455 as numeric) as growth_factor, cast(-0.50 as numeric) as daily_return, cast(0.60 as numeric) as cumulative_growth_factor, cast(-0.40 as numeric) as cumulative_return
     expect:
       rows:
-        - {hour_of_day: 3, maximum_drawdown: "-0.500000000000000", maximum_loss_from_start: "0.40", worst_single_day_return: "-0.50", trading_days: 4, first_trade_date: "2022-02-01", last_trade_date: "2022-02-04"}
+        - {hour_of_day: 3, maximum_drawdown: "-0.5000", maximum_loss_from_start: "0.4000", worst_single_day_return: "-0.5000", trading_days: 4, first_trade_date: "2022-02-01", last_trade_date: "2022-02-04"}

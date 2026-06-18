@@ -13,7 +13,7 @@ compounded as (
             partition by hour_of_day
             order by trade_date
             rows between unbounded preceding and current row
-        )), 15) as cumulative_growth_factor
+        )), {{ var('report_decimals') }}) as cumulative_growth_factor
 
     from daily_trades
 ),

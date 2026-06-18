@@ -2,7 +2,23 @@ version: 2
 
 models:
   - name: stg_binance__bitcoin_prices
-    description: One-second BTCUSDT bars aliased and cast to numeric from source. Exact duplicate source rows removed, so the grain is one row per second.
+    description: >
+      One-second BTCUSDT bars, aliased and cast to bounded numeric from source.
+      Exact duplicate source rows are removed with select distinct, which only
+      drops fully identical rows, so two genuinely different prints in the same
+      second are preserved. Grain is one row per second. Prices cast to
+      numeric(18,8) and volume to numeric(28,8): bounded for storage, scale 8
+      matches Binance asset precision so no source decimals are dropped.
+    data_tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "high >= low"
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "high >= greatest(open, close)"
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "low <= least(open, close)"
     columns:
       - name: pk_bitcoin_price_key
         description: Surrogate key for the second bar, hashed from open_time.
@@ -17,23 +33,49 @@ models:
         description: First traded price in the second.
         data_tests:
           - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
       - name: high
         description: Highest traded price in the second.
         data_tests:
           - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
       - name: low
         description: Lowest traded price in the second.
         data_tests:
           - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
       - name: close
         description: Last traded price in the second.
         data_tests:
           - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
       - name: volume
         description: BTC volume traded in the second.
         data_tests:
           - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
       - name: number_of_trades
-        description: Count of executed trades in the second.
+        description: >
+          Count of executed trades in the second. Upper bound is a soft outlier
+          guard (warn): a second reporting an implausible trade count flags a
+          suspect source row rather than failing the build.
         data_tests:
           - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 100000
+                inclusive: true
+              config:
+                severity: warn

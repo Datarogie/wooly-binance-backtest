@@ -139,9 +139,11 @@ resample, simulate, compound.
   hours that actually traded (sparse); a no-trade hour is identical to a no-change day
   (growth factor 1.0), so a calendar spine would be machinery for a presentation
   concern. Want a gapless chart axis? Forward-fill in the BI layer.
-- *Daily trades* keep the pricing modular. Crypto runs 24/7, so a missing hour-start is
-  missing data, not a closed market: I carry the prior close forward and flag how stale
-  it is. Fees are one variable, frictionless to realistic in a switch.
+- *Daily trades* keep the pricing modular. A trade needs a real price at both ends, so I
+  only trade hours with an actual bar at the first second and the last second; the rest
+  are dropped, not back-filled. A price at :50 doesn't mean the price held at :59, so
+  carrying one forward would invent a fill that never happened. Fees are one variable,
+  frictionless to realistic in a switch.
 - *Equity curve* keeps the compounding separate. Reinvesting compounds (each day
   multiplies the balance), so it isn't a running sum. Postgres has no running-multiply,
   and the standard trick is `exp(sum(ln(...)))`, so that is what I used.
@@ -163,9 +165,10 @@ with the window. I report the full-history one.
 - **Buy = open of the hour's first second bar** (`[HH:00:00, HH:00:01)`), the first trade at the start of the hour.
 - **Sell = close of the hour's last second bar**, the last trade before the hour ends.
 
-If the hour's first second has no bar, entry carries the prior hourly bar's close
-forward (lagged over hourly bars by time), with staleness flagged in
-`carried_price_staleness_seconds`. An hour with no data at all is a no-trade day.
+An hour is only traded when a real bar exists at both boundary seconds (`has_open_boundary`
+and `has_close_boundary` on the hourly bars). Hours missing either are dropped, not
+back-filled: a price at `:50` doesn't imply the price at `:59`, so carrying one forward
+would invent an entry or exit that never traded.
 
 ## Assumptions
 
